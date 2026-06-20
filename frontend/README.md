@@ -1,73 +1,54 @@
-# React + TypeScript + Vite
+# Frontend — Closed-Loop Discovery MVP
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite + TypeScript single-page app over the backend API (`docs/openapi.json`).
+Renders the two-loop DMTA flow and makes the semantic-completeness bottleneck
+visible end-to-end for three personas (scientist / ML engineer / manager).
 
-Currently, two official plugins are available:
+## Run
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cd frontend
+npm install
+npm run dev      # http://localhost:5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+`npm run build` does a typecheck (`tsc -b`) + production build.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Backend connection
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+The app calls the API at `VITE_API_BASE` (default `http://localhost:8000`).
+The backend sets permissive CORS, so direct calls work. A Vite dev proxy also
+maps `/api` → `http://localhost:8000` if you prefer a same-origin path
+(`VITE_API_BASE=/api`). See `.env.example`.
+
+## Mock backend (MSW) — demoable with no backend
+
+An [MSW](https://mswjs.io) mock implements every endpoint from `openapi.json`
+against an in-memory store that mirrors the real status/normalization rules
+(Cheng–Prusoff, blocked reasons). The mock starts when:
+
+- `VITE_USE_MOCK=1`, **or**
+- the **MOCK/LIVE** badge in the nav is toggled to MOCK (persisted), **or**
+- the live backend `/health` check fails (automatic fallback).
+
+The key interaction works in mock mode: open a blocked record on `/records`,
+fill the missing fields, save — the row flips green and the model-ready count on
+`/` updates.
+
+## Routes
+
+| Route | View |
+|-------|------|
+| `/` | Loop overview (two-loop SVG with live counts; blocked highlighted) |
+| `/records` | Records table + inline fix of blocked records (`?status=` filter) |
+| `/compound/:inchikey` | Per-compound measurements by comparability + Boltz prediction |
+| `/acquisition` | Ranked candidate batch; Approve / Replay buttons |
+| `/metrics` | Manager dashboard: model-ready %, blocked-by-reason, credit, calibration |
+
+## Layout
+
+- `src/api/` — typed client + types (mirrors the frozen contract)
+- `src/mocks/` — MSW handlers + in-memory backend
+- `src/components/` — NavBar, StructureCanvas (smiles-drawer), StatusDot
+- `src/views/` — the five routes
+- `src/lib/` — persona context, formatting, async hook

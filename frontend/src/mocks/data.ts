@@ -9,8 +9,13 @@
 import type {
   AcquisitionBatch,
   AssayRecord,
+  AssayRecordIn,
   BlockedReason,
+  CompoundView,
+  LoopSummary,
   Metrics,
+  Prediction,
+  RecordPatch,
   RecordStatus,
   Target,
 } from "../api/types";
@@ -454,7 +459,7 @@ export const TARGET: Target = {
 };
 
 // --- derived views ---
-export function loopSummary(): MockState extends never ? never : import("../api/types").LoopSummary {
+export function loopSummary(): LoopSummary {
   const s = getState();
   const model_ready = s.records.filter((r) => r.status === "model_ready").length;
   const normalizable = s.records.filter((r) => r.status === "normalizable").length;
@@ -512,7 +517,7 @@ export function metrics(): Metrics {
   };
 }
 
-export function compoundView(inchikey: string): import("../api/types").CompoundView | null {
+export function compoundView(inchikey: string): CompoundView | null {
   const s = getState();
   const recs = s.records.filter((r) => r.compound.inchikey === inchikey);
   if (recs.length === 0) return null;
@@ -545,9 +550,9 @@ export function compoundView(inchikey: string): import("../api/types").CompoundV
   const measured_ki_M = kis.length ? Math.min(...kis) : null;
 
   // attach a prediction for some compounds (predictions lane)
-  let prediction: import("../api/types").Prediction | null = null;
+  let prediction: Prediction | null = null;
   let delta_loguM: number | null = null;
-  const predictForSmiles: Record<string, import("../api/types").Prediction> = {
+  const predictForSmiles: Record<string, Prediction> = {
     "Cc1ccc(cc1)S(=O)(=O)N": {
       smiles: "Cc1ccc(cc1)S(=O)(=O)N",
       inchikey,
@@ -596,7 +601,7 @@ export function listRecords(status?: string): AssayRecord[] {
   return status ? recs.filter((r) => r.status === status) : recs;
 }
 
-export function postRecord(body: import("../api/types").AssayRecordIn): AssayRecord {
+export function postRecord(body: AssayRecordIn): AssayRecord {
   const rec = computeDerived({
     ...body,
     record_id: nextRecordId(),
@@ -608,7 +613,7 @@ export function postRecord(body: import("../api/types").AssayRecordIn): AssayRec
 
 export function patchRecord(
   recordId: string,
-  patch: import("../api/types").RecordPatch,
+  patch: RecordPatch,
 ): AssayRecord | null {
   const s = getState();
   const idx = s.records.findIndex((r) => r.record_id === recordId);
