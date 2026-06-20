@@ -56,7 +56,6 @@ export async function maybeStartMock(): Promise<boolean> {
     const alive = await backendAlive();
     if (!alive) {
       shouldMock = true;
-      // eslint-disable-next-line no-console
       console.warn(
         "[mock] backend not reachable at " +
           API_BASE +

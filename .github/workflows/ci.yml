@@ -32,5 +32,7 @@ jobs:
           node-version: "22"
       - name: Install frontend deps
         run: cd frontend && npm install
+      - name: Lint
+        run: cd frontend && npx eslint .
       - name: Type-check & build
         run: cd frontend && npm run build

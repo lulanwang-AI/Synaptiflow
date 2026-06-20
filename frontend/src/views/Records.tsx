@@ -155,7 +155,7 @@ export default function Records() {
     [statusFilter],
   );
 
-  const records = data ?? [];
+  const records = useMemo(() => data ?? [], [data]);
   const selected = useMemo(
     () => records.find((r) => r.record_id === selectedId) ?? null,
     [records, selectedId],

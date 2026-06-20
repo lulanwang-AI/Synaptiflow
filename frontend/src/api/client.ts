@@ -42,7 +42,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         ...(init?.headers ?? {}),
       },
     });
-  } catch (e) {
+  } catch {
     // Network failure (backend down and no mock intercepting).
     throw new ApiError(
       `Network error reaching ${url}. Is the backend running? ` +
