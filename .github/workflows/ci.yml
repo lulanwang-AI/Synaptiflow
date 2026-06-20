@@ -3,7 +3,7 @@ name: CI
 # Tests and CI run with BOLTZ_MOCK=1 and never spend Boltz credits.
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
 
 jobs:
