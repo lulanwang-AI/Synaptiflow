@@ -1,0 +1,1615 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Closed-Loop Discovery MVP",
+    "description": "Assay-metadata schema as the spine of wet\u2194dry communication. Boltz outputs are PREDICTIONS, never assay records. All Boltz access goes through app/boltz_client.py with mock mode, caching, and a credit guard.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/loop/summary": {
+      "get": {
+        "tags": [
+          "loop"
+        ],
+        "summary": "Loop Summary",
+        "operationId": "loop_summary_loop_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoopSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/loop/replay": {
+      "post": {
+        "tags": [
+          "loop"
+        ],
+        "summary": "Loop Replay",
+        "operationId": "loop_replay_loop_replay_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ReplayRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Req"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/records": {
+      "get": {
+        "tags": [
+          "records"
+        ],
+        "summary": "List Records",
+        "operationId": "list_records_records_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssayRecord"
+                  },
+                  "title": "Response List Records Records Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "records"
+        ],
+        "summary": "Post Record",
+        "operationId": "post_record_records_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssayRecordIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/records/{record_id}": {
+      "get": {
+        "tags": [
+          "records"
+        ],
+        "summary": "Get Record",
+        "operationId": "get_record_records__record_id__get",
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Record Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssayRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "records"
+        ],
+        "summary": "Patch Record",
+        "operationId": "patch_record_records__record_id__patch",
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Record Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/compound/{inchikey}": {
+      "get": {
+        "tags": [
+          "compound"
+        ],
+        "summary": "Get Compound",
+        "operationId": "get_compound_compound__inchikey__get",
+        "parameters": [
+          {
+            "name": "inchikey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Inchikey"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompoundView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/acquisition/batch": {
+      "get": {
+        "tags": [
+          "acquisition"
+        ],
+        "summary": "Acquisition Batch",
+        "operationId": "acquisition_batch_acquisition_batch_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcquisitionBatch"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/acquisition/approve": {
+      "post": {
+        "tags": [
+          "acquisition"
+        ],
+        "summary": "Acquisition Approve",
+        "operationId": "acquisition_approve_acquisition_approve_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoopSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "metrics"
+        ],
+        "summary": "Metrics",
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Metrics"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/target": {
+      "get": {
+        "tags": [
+          "target"
+        ],
+        "summary": "Get Target",
+        "operationId": "get_target_target_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Target"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reset": {
+      "post": {
+        "tags": [
+          "loop"
+        ],
+        "summary": "Reset",
+        "operationId": "reset_reset_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AcquisitionBatch": {
+        "properties": {
+          "target_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Name"
+          },
+          "generated": {
+            "type": "integer",
+            "title": "Generated",
+            "default": 0
+          },
+          "scored": {
+            "type": "integer",
+            "title": "Scored",
+            "default": 0
+          },
+          "shortlisted": {
+            "type": "integer",
+            "title": "Shortlisted",
+            "default": 0
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/AcquisitionCandidate"
+            },
+            "type": "array",
+            "title": "Candidates"
+          }
+        },
+        "type": "object",
+        "title": "AcquisitionBatch"
+      },
+      "AcquisitionCandidate": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "inchikey": {
+            "type": "string",
+            "title": "Inchikey"
+          },
+          "mu": {
+            "type": "number",
+            "title": "Mu",
+            "description": "Cheap-surrogate predicted pKi mean"
+          },
+          "sigma": {
+            "type": "number",
+            "title": "Sigma",
+            "description": "Cheap-surrogate ensemble std (uncertainty)"
+          },
+          "boltz_affinity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boltz Affinity",
+            "description": "Boltz affinity proxy, log-\u00b5M"
+          },
+          "adme_flags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Adme Flags"
+          },
+          "ood_flag": {
+            "type": "boolean",
+            "title": "Ood Flag",
+            "default": false
+          },
+          "tag": {
+            "type": "string",
+            "title": "Tag",
+            "description": "exploit | explore"
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale"
+          },
+          "design_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Design Run Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles",
+          "inchikey",
+          "mu",
+          "sigma",
+          "tag",
+          "rationale"
+        ],
+        "title": "AcquisitionCandidate"
+      },
+      "Assay": {
+        "properties": {
+          "assay_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assay Id"
+          },
+          "assay_type": {
+            "type": "string",
+            "title": "Assay Type",
+            "description": "SPR | ITC | enzymatic_IC50 | radioligand | ..."
+          },
+          "readout": {
+            "type": "string",
+            "title": "Readout",
+            "description": "Kd | IC50 | Ki | pct_inhibition | dTm | ..."
+          },
+          "target_construct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Construct",
+            "description": "Exact construct matters (required for model_ready)"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit",
+            "description": "Required; normalized to molar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "assay_type",
+          "readout"
+        ],
+        "title": "Assay"
+      },
+      "AssayRecord": {
+        "properties": {
+          "compound": {
+            "$ref": "#/components/schemas/Compound"
+          },
+          "assay": {
+            "$ref": "#/components/schemas/Assay"
+          },
+          "conditions": {
+            "$ref": "#/components/schemas/Conditions"
+          },
+          "measurement": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          },
+          "record_id": {
+            "type": "string",
+            "title": "Record Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RecordStatus"
+          },
+          "blocked_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BlockedReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Detail",
+            "description": "Human/machine-readable explanation, quoted verbatim in UI"
+          },
+          "missing_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Fields",
+            "description": "Exact fields needed to unblock"
+          },
+          "value_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value M",
+            "description": "Reported value normalized to molar"
+          },
+          "ki_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ki M",
+            "description": "Derived Ki in molar (Cheng-Prusoff)"
+          },
+          "comparability_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparability Key",
+            "description": "Records with the same key are poolable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "compound",
+          "assay",
+          "record_id",
+          "status"
+        ],
+        "title": "AssayRecord",
+        "description": "Stored assay record: raw record + computed status + derived fields."
+      },
+      "AssayRecordIn": {
+        "properties": {
+          "compound": {
+            "$ref": "#/components/schemas/Compound"
+          },
+          "assay": {
+            "$ref": "#/components/schemas/Assay"
+          },
+          "conditions": {
+            "$ref": "#/components/schemas/Conditions"
+          },
+          "measurement": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "compound",
+          "assay"
+        ],
+        "title": "AssayRecordIn",
+        "description": "Raw assay record submitted for ingest (spec \u00a71)."
+      },
+      "BlockedReason": {
+        "type": "string",
+        "enum": [
+          "missing_identity",
+          "missing_construct",
+          "missing_unit",
+          "missing_conditions",
+          "qc_fail"
+        ],
+        "title": "BlockedReason"
+      },
+      "ComparabilityGroup": {
+        "properties": {
+          "comparability_key": {
+            "type": "string",
+            "title": "Comparability Key"
+          },
+          "poolable": {
+            "type": "boolean",
+            "title": "Poolable"
+          },
+          "measurements": {
+            "items": {
+              "$ref": "#/components/schemas/CompoundMeasurement"
+            },
+            "type": "array",
+            "title": "Measurements"
+          }
+        },
+        "type": "object",
+        "required": [
+          "comparability_key",
+          "poolable"
+        ],
+        "title": "ComparabilityGroup"
+      },
+      "Compound": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles",
+            "description": "Working representation (required)"
+          },
+          "smiles_canonical": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smiles Canonical",
+            "description": "Derived: RDKit canonicalization"
+          },
+          "inchikey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inchikey",
+            "description": "Derived: stable join/dedup key"
+          },
+          "compound_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compound Id",
+            "description": "Assigned on register"
+          },
+          "batch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Id",
+            "description": "Optional salt/batch metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles"
+        ],
+        "title": "Compound"
+      },
+      "CompoundMeasurement": {
+        "properties": {
+          "record_id": {
+            "type": "string",
+            "title": "Record Id"
+          },
+          "assay_type": {
+            "type": "string",
+            "title": "Assay Type"
+          },
+          "readout": {
+            "type": "string",
+            "title": "Readout"
+          },
+          "target_construct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Construct"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "ki_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ki M"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RecordStatus"
+          },
+          "comparability_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparability Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "record_id",
+          "assay_type",
+          "readout",
+          "status"
+        ],
+        "title": "CompoundMeasurement"
+      },
+      "CompoundView": {
+        "properties": {
+          "inchikey": {
+            "type": "string",
+            "title": "Inchikey"
+          },
+          "smiles_canonical": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smiles Canonical"
+          },
+          "compound_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compound Id"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/ComparabilityGroup"
+            },
+            "type": "array",
+            "title": "Groups"
+          },
+          "prediction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Prediction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "measured_ki_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured Ki M",
+            "description": "Best/representative measured Ki for predicted-vs-measured delta"
+          },
+          "delta_loguM": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Logum",
+            "description": "Boltz prediction minus measured (log-\u00b5M); calibration signal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "inchikey"
+        ],
+        "title": "CompoundView"
+      },
+      "Conditions": {
+        "properties": {
+          "temperature_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature C"
+          },
+          "buffer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer"
+          },
+          "ph": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ph"
+          },
+          "substrate_conc_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Substrate Conc M",
+            "description": "[S], enzymatic IC50 -> Ki"
+          },
+          "km_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Km M",
+            "description": "Km, Cheng-Prusoff (enzyme)"
+          },
+          "ligand_conc_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ligand Conc M",
+            "description": "[L], radioligand IC50 -> Ki"
+          },
+          "probe_kd_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probe Kd M",
+            "description": "Kd of probe (radioligand)"
+          }
+        },
+        "type": "object",
+        "title": "Conditions"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "IngestResponse": {
+        "properties": {
+          "record": {
+            "$ref": "#/components/schemas/AssayRecord"
+          }
+        },
+        "type": "object",
+        "required": [
+          "record"
+        ],
+        "title": "IngestResponse"
+      },
+      "LoopSummary": {
+        "properties": {
+          "generated": {
+            "type": "integer",
+            "title": "Generated",
+            "default": 0
+          },
+          "scored": {
+            "type": "integer",
+            "title": "Scored",
+            "default": 0
+          },
+          "selected": {
+            "type": "integer",
+            "title": "Selected",
+            "default": 0
+          },
+          "in_synthesis": {
+            "type": "integer",
+            "title": "In Synthesis",
+            "default": 0
+          },
+          "assayed": {
+            "type": "integer",
+            "title": "Assayed",
+            "default": 0
+          },
+          "ingested": {
+            "type": "integer",
+            "title": "Ingested",
+            "default": 0
+          },
+          "model_ready": {
+            "type": "integer",
+            "title": "Model Ready",
+            "default": 0
+          },
+          "normalizable": {
+            "type": "integer",
+            "title": "Normalizable",
+            "default": 0
+          },
+          "blocked": {
+            "type": "integer",
+            "title": "Blocked",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "LoopSummary"
+      },
+      "Measurement": {
+        "properties": {
+          "replicates": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replicates"
+          },
+          "std_error": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Std Error"
+          },
+          "qc_flag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qc Flag",
+            "description": "pass | aggregator | fluorescence_interference | fail",
+            "default": "pass"
+          },
+          "operator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          }
+        },
+        "type": "object",
+        "title": "Measurement"
+      },
+      "Metrics": {
+        "properties": {
+          "total_records": {
+            "type": "integer",
+            "title": "Total Records",
+            "default": 0
+          },
+          "pct_model_ready": {
+            "type": "number",
+            "title": "Pct Model Ready",
+            "default": 0.0
+          },
+          "blocked_by_reason": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Blocked By Reason"
+          },
+          "queue_depths": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Queue Depths"
+          },
+          "cycle_time_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Time S"
+          },
+          "credit_spent_usd": {
+            "type": "number",
+            "title": "Credit Spent Usd",
+            "default": 0.0
+          },
+          "credit_cap_usd": {
+            "type": "number",
+            "title": "Credit Cap Usd",
+            "default": 0.0
+          },
+          "credit_remaining_usd": {
+            "type": "number",
+            "title": "Credit Remaining Usd",
+            "default": 0.0
+          },
+          "calibration_error": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Error",
+            "description": "Mean |Boltz predicted - measured| over closed cycles"
+          },
+          "calibration_n": {
+            "type": "integer",
+            "title": "Calibration N",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "Metrics"
+      },
+      "Prediction": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "inchikey": {
+            "type": "string",
+            "title": "Inchikey"
+          },
+          "boltz_affinity_loguM": {
+            "type": "number",
+            "title": "Boltz Affinity Logum",
+            "description": "Assay-agnostic binding-strength proxy, log-\u00b5M. NOT a Ki."
+          },
+          "adme_flags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Adme Flags"
+          },
+          "ood_flag": {
+            "type": "boolean",
+            "title": "Ood Flag",
+            "default": false
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/PredictionProvenance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles",
+          "inchikey",
+          "boltz_affinity_loguM"
+        ],
+        "title": "Prediction"
+      },
+      "PredictionProvenance": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "boltz-api"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "boltzmol-1"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          }
+        },
+        "type": "object",
+        "title": "PredictionProvenance"
+      },
+      "Provenance": {
+        "properties": {
+          "source_system": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source System"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "protocol_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protocol Ref"
+          }
+        },
+        "type": "object",
+        "title": "Provenance"
+      },
+      "RecordPatch": {
+        "properties": {
+          "compound": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Compound"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "assay": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Assay"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conditions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Conditions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "measurement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Measurement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "RecordPatch",
+        "description": "Partial edit to a record's metadata. Any sub-object provided is merged."
+      },
+      "RecordStatus": {
+        "type": "string",
+        "enum": [
+          "model_ready",
+          "normalizable",
+          "blocked"
+        ],
+        "title": "RecordStatus"
+      },
+      "ReplayRequest": {
+        "properties": {
+          "inchikeys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inchikeys",
+            "description": "Subset to replay; default = current acquisition batch"
+          }
+        },
+        "type": "object",
+        "title": "ReplayRequest"
+      },
+      "ReplayResponse": {
+        "properties": {
+          "replayed": {
+            "type": "integer",
+            "title": "Replayed"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/AssayRecord"
+            },
+            "type": "array",
+            "title": "Records"
+          },
+          "calibration_error": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "replayed"
+        ],
+        "title": "ReplayResponse"
+      },
+      "ResetResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "records": {
+            "type": "integer",
+            "title": "Records"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "records"
+        ],
+        "title": "ResetResponse"
+      },
+      "Target": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "protein_sequence": {
+            "type": "string",
+            "title": "Protein Sequence"
+          },
+          "chain_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Chain Ids"
+          },
+          "pocket_residues": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pocket Residues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "protein_sequence"
+        ],
+        "title": "Target"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
