@@ -69,6 +69,29 @@ def test_api_acquisition_has_boltz_fields():
             assert key in c
 
 
+def test_api_loop_queue_fills_on_approve_and_drains_on_replay():
+    client = TestClient(app)
+    with client:
+        # empty to start
+        q0 = client.get("/loop/queue").json()
+        assert q0["depth"] == 0
+        assert q0["items"] == []
+
+        # build + approve a batch -> the synthesis queue fills
+        batch = client.get("/acquisition/batch").json()
+        client.post("/acquisition/approve")
+        q1 = client.get("/loop/queue").json()
+        assert q1["depth"] == len(batch["candidates"])
+        item = q1["items"][0]
+        for key in ("smiles", "inchikey", "target_construct", "boltz_affinity_loguM", "design_run_id"):
+            assert key in item
+
+        # replay -> queue drains back to empty
+        client.post("/loop/replay", json={})
+        q2 = client.get("/loop/queue").json()
+        assert q2["depth"] == 0
+
+
 def test_api_metrics_has_credit_and_calibration_fields():
     client = TestClient(app)
     with client:

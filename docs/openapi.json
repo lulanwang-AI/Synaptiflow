@@ -27,6 +27,27 @@
         }
       }
     },
+    "/loop/queue": {
+      "get": {
+        "tags": [
+          "loop"
+        ],
+        "summary": "Loop Queue",
+        "operationId": "loop_queue_loop_queue_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/loop/replay": {
       "post": {
         "tags": [
@@ -1395,6 +1416,88 @@
         },
         "type": "object",
         "title": "Provenance"
+      },
+      "QueueItem": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "inchikey": {
+            "type": "string",
+            "title": "Inchikey"
+          },
+          "target_construct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Construct"
+          },
+          "boltz_affinity_loguM": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boltz Affinity Logum",
+            "description": "Cached Boltz prediction (log-\u00b5M); the value replay calibrates against"
+          },
+          "design_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Design Run Id"
+          },
+          "selected_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected At",
+            "description": "Unix time the candidate was approved"
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles",
+          "inchikey"
+        ],
+        "title": "QueueItem"
+      },
+      "QueueView": {
+        "properties": {
+          "depth": {
+            "type": "integer",
+            "title": "Depth",
+            "default": 0
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QueueItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "title": "QueueView"
       },
       "RecordPatch": {
         "properties": {

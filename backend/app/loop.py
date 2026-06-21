@@ -25,6 +25,8 @@ from .schema import (
     Conditions,
     Measurement,
     Provenance,
+    QueueItem,
+    QueueView,
     ReplayResponse,
 )
 from .store import get_store
@@ -40,6 +42,22 @@ def reset_queue() -> None:
 
 def queue_depth() -> int:
     return len(_QUEUE)
+
+
+def queue_view() -> QueueView:
+    """Snapshot of the synthesis queue (candidates awaiting wet-lab results)."""
+    items = [
+        QueueItem(
+            smiles=q["smiles"],
+            inchikey=q["inchikey"],
+            target_construct=q.get("construct"),
+            boltz_affinity_loguM=q.get("boltz_affinity_loguM"),
+            design_run_id=q.get("design_run_id"),
+            selected_at=q.get("selected_at"),
+        )
+        for q in _QUEUE
+    ]
+    return QueueView(depth=len(_QUEUE), items=items)
 
 
 def approve(batch, construct: str = "KINASE_X_1-320_His") -> int:

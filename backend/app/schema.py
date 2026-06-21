@@ -268,3 +268,22 @@ class ReplayResponse(BaseModel):
 class ResetResponse(BaseModel):
     ok: bool
     records: int
+
+
+# --------------------------------------------------------------------------- #
+# Synthesis queue (outer loop: selected batch -> synthesis -> assay)
+# --------------------------------------------------------------------------- #
+class QueueItem(BaseModel):
+    smiles: str
+    inchikey: str
+    target_construct: Optional[str] = None
+    boltz_affinity_loguM: Optional[float] = Field(
+        None, description="Cached Boltz prediction (log-µM); the value replay calibrates against"
+    )
+    design_run_id: Optional[str] = None
+    selected_at: Optional[float] = Field(None, description="Unix time the candidate was approved")
+
+
+class QueueView(BaseModel):
+    depth: int = 0
+    items: list[QueueItem] = Field(default_factory=list)

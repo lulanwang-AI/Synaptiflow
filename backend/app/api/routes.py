@@ -18,6 +18,7 @@ from ..schema import (
     IngestResponse,
     LoopSummary,
     Metrics,
+    QueueView,
     RecordPatch,
     ReplayRequest,
     ReplayResponse,
@@ -38,6 +39,11 @@ _LAST_BATCH: dict = {"batch": None}
 @router.get("/loop/summary", response_model=LoopSummary, tags=["loop"])
 def loop_summary() -> LoopSummary:
     return get_store().loop_summary()
+
+
+@router.get("/loop/queue", response_model=QueueView, tags=["loop"])
+def loop_queue() -> QueueView:
+    return loop.queue_view()
 
 
 @router.post("/loop/replay", response_model=ReplayResponse, tags=["loop"])
