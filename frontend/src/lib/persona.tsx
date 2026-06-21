@@ -11,8 +11,8 @@ export const PERSONA_LABEL: Record<Persona, string> = {
 // Which routes each persona cares about (used to emphasise nav links).
 export const PERSONA_ROUTES: Record<Persona, string[]> = {
   scientist: ["/submit", "/records", "/compound"],
-  ml: ["/acquisition", "/records", "/submit"],
-  manager: ["/", "/metrics"],
+  ml: ["/acquisition", "/records", "/submit", "/target", "/synthesis"],
+  manager: ["/", "/metrics", "/target", "/synthesis"],
 };
 
 // Short per-view hint text shown when the persona is relevant to the view.
@@ -32,12 +32,20 @@ export const PERSONA_HINTS: Record<Persona, Partial<Record<string, string>>> = {
       "ML engineer view: this is the training set. Only model-ready (green) records feed the surrogate.",
     "/submit":
       "ML engineer view: every record you add here is potential training data — but only model-ready (green) rows reach the surrogate.",
+    "/target":
+      "ML engineer view: the substrate the generator designs against. Boltz design/screen operate on this pocket — candidates are ranked relative to this construct.",
+    "/synthesis":
+      "ML engineer view: approved candidates awaiting results. Replaying closes the loop — returned Ki becomes training data and updates predicted-vs-measured calibration.",
   },
   manager: {
     "/":
       "Manager view: where is the loop stuck? The blocked count is the communication gap, shown as a number — click it to drill in.",
     "/metrics":
       "Manager view: throughput, blocked-by-reason, Boltz credit spend, and surrogate calibration over closed cycles.",
+    "/target":
+      "Manager view: the project target. This single construct anchors the whole loop — design, scoring, and the comparability of every measurement key off it.",
+    "/synthesis":
+      "Manager view: how many candidates are in flight, and the lever to turn the loop — replay results to bring ground truth back and watch calibration update.",
   },
 };
 

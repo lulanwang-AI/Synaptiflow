@@ -15,6 +15,8 @@ import type {
   LoopSummary,
   Metrics,
   Prediction,
+  QueueItem,
+  QueueView,
   RecordPatch,
   RecordStatus,
   Target,
@@ -339,6 +341,7 @@ export interface MockState {
   approvedBatches: number;
   creditSpentUsd: number;
   calibrationErrors: number[];
+  queue: QueueItem[];
 }
 
 let state: MockState;
@@ -362,6 +365,7 @@ export function resetState(): number {
     approvedBatches: 0,
     creditSpentUsd: 4.8,
     calibrationErrors: [],
+    queue: [],
   };
   return state.records.length;
 }
@@ -467,7 +471,7 @@ export function loopSummary(): LoopSummary {
   const generated = 240;
   const scored = 240;
   const selected = CANDIDATES.length;
-  const in_synthesis = s.approvedBatches > 0 ? CANDIDATES.length : 0;
+  const in_synthesis = s.queue.length;
   const ingested = s.records.length;
   const assayed = s.records.length;
   return {
@@ -495,7 +499,7 @@ export function metrics(): Metrics {
     }
   }
   const queue_depths = {
-    synthesis: s.approvedBatches > 0 ? CANDIDATES.length : 0,
+    synthesis: s.queue.length,
     assay: 0,
     ingest_pending: 0,
   };
@@ -632,38 +636,56 @@ export function patchRecord(
   return recomputed;
 }
 
+export function queueView(): QueueView {
+  const s = getState();
+  return { depth: s.queue.length, items: JSON.parse(JSON.stringify(s.queue)) };
+}
+
 export function approveBatch() {
   const s = getState();
   s.approvedBatches += 1;
   s.creditSpentUsd += 12.5; // shortlist Boltz screen/adme spend
+  const now = Date.now() / 1000;
+  for (const c of CANDIDATES) {
+    if (s.queue.some((q) => q.inchikey === c.inchikey)) continue;
+    s.queue.push({
+      smiles: c.smiles,
+      inchikey: c.inchikey,
+      target_construct: "KINASE_X_1-320_His",
+      boltz_affinity_loguM: c.boltz_affinity ?? null,
+      design_run_id: c.design_run_id ?? null,
+      selected_at: now,
+    });
+  }
   return loopSummary();
 }
 
 export function replay(inchikeys?: string[] | null) {
   const s = getState();
-  // simulate wet-lab results returning for the acquisition batch, re-ingested
-  // as model-ready Ki records, and produce a calibration delta vs prediction.
-  const cands = CANDIDATES.filter(
-    (c) => !inchikeys || inchikeys.includes(c.inchikey),
+  // simulate wet-lab results returning for queued candidates, re-ingested as
+  // model-ready Ki records, with a calibration delta vs the Boltz prediction.
+  // Mirrors backend loop._mocked_measurement: measured = pred + uniform(-0.8,1.2).
+  const items = s.queue.filter(
+    (q) => !inchikeys || inchikeys.includes(q.inchikey),
   );
   const newRecords: AssayRecord[] = [];
-  for (const c of cands) {
-    // turn mu (pKi) into a measured Ki(M): Ki = 10^-pKi
-    const noisy = c.mu + (Math.random() - 0.5) * 0.6;
-    const ki = Math.pow(10, -noisy);
+  for (const item of items) {
+    const pred = item.boltz_affinity_loguM ?? 0;
+    const measuredLoguM = pred + (Math.random() * 2 - 0.8);
+    const ki = Math.pow(10, measuredLoguM - 6); // log µM -> M
     const rec = computeDerived({
-      compound: { smiles: c.smiles, inchikey: c.inchikey },
+      compound: { smiles: item.smiles, inchikey: item.inchikey },
       assay: {
-        assay_id: `ASY-REPLAY-${c.inchikey.slice(0, 4)}`,
+        assay_id: `ASY-REPLAY-${item.inchikey.slice(0, 4)}`,
         assay_type: "SPR",
         readout: "Ki",
-        target_construct: "KINASE_X_1-320_His",
+        target_construct: item.target_construct ?? "KINASE_X_1-320_His",
         value: ki,
         unit: "M",
       },
       conditions: { temperature_c: 25, ph: 7.4 },
-      measurement: { replicates: 3, qc_flag: "pass", operator: "replay", date: "2026-06-20" },
-      provenance: { source_system: "replay", run_id: "REPLAY-2026-06-20" },
+      measurement: { replicates: 3, qc_flag: "pass", operator: "loop", date: "2026-06-20" },
+      provenance: { source_system: "replayed-synthesis", run_id: "RUN-REPLAY" },
       record_id: nextRecordId(),
       status: "model_ready",
     } as AssayRecord);
@@ -671,11 +693,13 @@ export function replay(inchikeys?: string[] | null) {
     newRecords.push(rec);
 
     // calibration: |Boltz pred (log-µM) - measured (log-µM)|
-    if (c.boltz_affinity != null) {
-      const measuredLoguM = Math.log10(ki / 1e-6);
-      s.calibrationErrors.push(Math.abs(c.boltz_affinity - measuredLoguM));
+    if (item.boltz_affinity_loguM != null) {
+      s.calibrationErrors.push(Math.abs(item.boltz_affinity_loguM - measuredLoguM));
     }
   }
+  // drain the replayed items from the queue
+  const replayedKeys = new Set(items.map((i) => i.inchikey));
+  s.queue = s.queue.filter((q) => !replayedKeys.has(q.inchikey));
   const errs = s.calibrationErrors;
   const calibration_error =
     errs.length > 0 ? errs.reduce((a, b) => a + b, 0) / errs.length : null;

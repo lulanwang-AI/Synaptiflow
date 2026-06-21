@@ -16,6 +16,10 @@ export const handlers = [
     http.get(u, () => HttpResponse.json(db.loopSummary())),
   ),
 
+  ...route("/loop/queue").map((u) =>
+    http.get(u, () => HttpResponse.json(db.queueView())),
+  ),
+
   ...route("/loop/replay").map((u) =>
     http.post(u, async ({ request }) => {
       let body: ReplayRequest = {};

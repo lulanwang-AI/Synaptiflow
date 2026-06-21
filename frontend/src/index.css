@@ -242,6 +242,39 @@ tbody tr.selected {
   color: var(--amber);
   border-color: #e6c200;
 }
+.chip-pocket {
+  background: var(--pred-bg);
+  color: #5b2bb5;
+  border-color: var(--pred-border);
+  font-weight: 600;
+}
+
+/* protein sequence viewer (target / substrate) */
+.seq {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  letter-spacing: 1px;
+}
+.seq-row {
+  display: flex;
+  gap: 0.9rem;
+  white-space: nowrap;
+}
+.seq-pos {
+  color: var(--muted);
+  width: 3.5ch;
+  text-align: right;
+  flex: 0 0 auto;
+  user-select: none;
+  letter-spacing: 0;
+}
+.seq-res.pocket {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 2px;
+  font-weight: 700;
+}
 
 /* prediction block — must be visually distinct from measurements */
 .prediction-card {

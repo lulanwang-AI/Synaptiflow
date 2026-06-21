@@ -11,6 +11,7 @@ import type {
   IngestResponse,
   LoopSummary,
   Metrics,
+  QueueView,
   RecordPatch,
   ReplayRequest,
   ReplayResponse,
@@ -65,6 +66,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   loopSummary: () => request<LoopSummary>("/loop/summary"),
+
+  loopQueue: () => request<QueueView>("/loop/queue"),
 
   listRecords: (status?: string) =>
     request<AssayRecord[]>(

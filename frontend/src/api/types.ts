@@ -197,3 +197,17 @@ export interface ResetResponse {
   ok: boolean;
   records: number;
 }
+
+export interface QueueItem {
+  smiles: string;
+  inchikey: string;
+  target_construct?: string | null;
+  boltz_affinity_loguM?: number | null;
+  design_run_id?: string | null;
+  selected_at?: number | null;
+}
+
+export interface QueueView {
+  depth: number;
+  items: QueueItem[];
+}
