@@ -86,6 +86,11 @@ Run `BOLTZ_MOCK=1 make up` to rehearse with zero spend, or live mode within the 
 
 1. **Overview (`/`)** — the two-loop flow with live counts: *N* model-ready,
    *M* blocked (blocked highlighted in red).
+1b. **Add data (`/submit`)** — a standard, sectioned assay-intake form
+   (compound → assay → conditions → measurement/QC → provenance). Load a demo
+   preset or type your own; on submit the record runs the real pipeline
+   (identity → Cheng–Prusoff → status) and lands in the store. The status is
+   computed at ingest and shown verbatim — no fabricated comparability.
 2. **Records (`/records`)** — drill into a blocked `IC50` record. The panel
    quotes the machine reason verbatim: *"IC50 present but the conditions required
    to derive Ki are missing: substrate_conc_M, km_M"* and shows **only those
@@ -139,7 +144,7 @@ backend/   FastAPI + RDKit + scikit-learn; SQLite activity store
     boltz_client.py THE ONLY path to Boltz: mock mode, cache, credit guard (FROZEN interface)
     api/routes.py   the frozen API surface
     seed/           seed records.jsonl + target.json
-frontend/  React + Vite + TypeScript SPA (5 views), MSW mock fallback
+frontend/  React + Vite + TypeScript SPA (6 views incl. /submit intake), MSW mock fallback
 docs/      context.md, spec.md, openapi.json (the frozen contract)
 ```
 
