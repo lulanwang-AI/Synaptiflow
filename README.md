@@ -86,6 +86,9 @@ Run `BOLTZ_MOCK=1 make up` to rehearse with zero spend, or live mode within the 
 
 1. **Overview (`/`)** — the two-loop flow with live counts: *N* model-ready,
    *M* blocked (blocked highlighted in red).
+1a. **Target (`/target`)** — the design substrate: the protein the generator
+   designs against, with its pocket residues highlighted on the sequence. The
+   leftmost node of the inner loop.
 1b. **Add data (`/submit`)** — a standard, sectioned assay-intake form
    (compound → assay → conditions → measurement/QC → provenance). Load a demo
    preset or type your own; on submit the record runs the real pipeline
@@ -103,10 +106,12 @@ Run `BOLTZ_MOCK=1 make up` to rehearse with zero spend, or live mode within the 
    top shortlist is re-ranked by Boltz affinity + ADMET. The batch shows
    µ ± σ, Boltz affinity (log-µM proxy), ADMET flags, an **OOD flag**, an
    exploit/explore tag, and the rationale — with `design_run_id` provenance.
-5. **Close the loop** — **Approve** the batch → it enters the synthesis queue →
-   **Replay results** → mocked ground truth re-enters via ingest → counts update
-   and the **predicted-vs-measured delta** appears on `/compound/:inchikey`
-   (the surrogate-calibration view) and as `calibration_error` on `/metrics`.
+5. **Close the loop** — **Approve** the batch → it enters the **synthesis queue
+   (`/synthesis`)**, listing the in-flight candidates (`GET /loop/queue`) → from
+   there (or `/acquisition`) **Replay results** → mocked ground truth re-enters
+   via ingest → counts update and the **predicted-vs-measured delta** appears on
+   `/compound/:inchikey` (the surrogate-calibration view) and as
+   `calibration_error` on `/metrics`.
 
 A **Reset demo** button (`POST /reset`) returns to a clean state mid-presentation.
 
@@ -144,7 +149,8 @@ backend/   FastAPI + RDKit + scikit-learn; SQLite activity store
     boltz_client.py THE ONLY path to Boltz: mock mode, cache, credit guard (FROZEN interface)
     api/routes.py   the frozen API surface
     seed/           seed records.jsonl + target.json
-frontend/  React + Vite + TypeScript SPA (6 views incl. /submit intake), MSW mock fallback
+frontend/  React + Vite + TypeScript SPA (8 views: overview, target, intake, records,
+           compound, acquisition, synthesis queue, metrics), MSW mock fallback
 docs/      context.md, spec.md, openapi.json (the frozen contract)
 ```
 
