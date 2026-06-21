@@ -155,23 +155,23 @@ class BoltzClient:
         self._cache[cache_key] = out
         return out
 
-    def screen(self, target, smiles: list[str]) -> list[dict]:
-        """Affinity proxy (log-µM) per SMILES. Cached per (target, inchikey)."""
+    @staticmethod
+    def _ik_or_self(smi: str) -> str:
         from .identity import inchikey as _ik
 
+        try:
+            return _ik(smi)
+        except Exception:
+            return smi
+
+    def screen(self, target, smiles: list[str]) -> list[dict]:
+        """Affinity proxy (log-µM) per SMILES. Cached per (target, inchikey).
+
+        Returns one result per input SMILES, aligned to input order.
+        """
         th = _target_hash(target)
-        results: list[dict] = []
-        to_compute: list[str] = []
-        for smi in smiles:
-            try:
-                ik = _ik(smi)
-            except Exception:
-                ik = smi
-            ck = ("screen", th, ik)
-            if ck in self._cache:
-                results.append(self._cache[ck])
-            else:
-                to_compute.append(smi)
+        keys = [("screen", th, self._ik_or_self(smi)) for smi in smiles]
+        to_compute = [smi for smi, k in zip(smiles, keys) if k not in self._cache]
 
         if to_compute:
             est = COST_SCREEN_PER_MOL * len(to_compute)
@@ -182,30 +182,17 @@ class BoltzClient:
                 computed = self._live_screen(target, to_compute, th)
                 self._charge(est)
             for smi, res in zip(to_compute, computed):
-                try:
-                    ik = _ik(smi)
-                except Exception:
-                    ik = smi
-                self._cache[("screen", th, ik)] = res
-                results.append(res)
-        return results
+                self._cache[("screen", th, self._ik_or_self(smi))] = res
+
+        return [self._cache[k] for k in keys]
 
     def adme(self, smiles: list[str]) -> list[dict]:
-        """ADMET flags per SMILES. Cached per inchikey (target-independent)."""
-        from .identity import inchikey as _ik
+        """ADMET flags per SMILES. Cached per inchikey (target-independent).
 
-        results: list[dict] = []
-        to_compute: list[str] = []
-        for smi in smiles:
-            try:
-                ik = _ik(smi)
-            except Exception:
-                ik = smi
-            ck = ("adme", ik)
-            if ck in self._cache:
-                results.append(self._cache[ck])
-            else:
-                to_compute.append(smi)
+        Returns one result per input SMILES, aligned to input order.
+        """
+        keys = [("adme", self._ik_or_self(smi)) for smi in smiles]
+        to_compute = [smi for smi, k in zip(smiles, keys) if k not in self._cache]
 
         if to_compute:
             est = COST_ADME_PER_MOL * len(to_compute)
@@ -216,12 +203,9 @@ class BoltzClient:
                 computed = self._live_adme(to_compute)
                 self._charge(est)
             for smi, res in zip(to_compute, computed):
-                try:
-                    ik = _ik(smi)
-                except Exception:
-                    ik = smi
-                self._cache[("adme", ik)] = res
-                results.append(res)
+                self._cache[("adme", self._ik_or_self(smi))] = res
+
+        return [self._cache[k] for k in keys]
         return results
 
     # ------------------------------------------------------------------ #

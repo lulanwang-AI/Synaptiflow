@@ -54,15 +54,19 @@ function Stage({
       </text>
       {count != null && (
         <>
+          {/* notification-style badge straddling the top-right corner, so it
+              never overlaps the (centered) node label */}
           <circle
-            cx={x + w - 16}
-            cy={y + 14}
+            cx={x + w}
+            cy={y}
             r={13}
             fill={highlight ? "#cf222e" : "#0969da"}
+            stroke="#fff"
+            strokeWidth={2}
           />
           <text
-            x={x + w - 16}
-            y={y + 18}
+            x={x + w}
+            y={y + 4}
             textAnchor="middle"
             fontSize="11"
             fontWeight="700"
@@ -81,11 +85,13 @@ function Arrow({
   y1,
   x2,
   y2,
+  feed,
 }: {
   x1: number;
   y1: number;
   x2: number;
   y2: number;
+  feed?: boolean; // dashed accent = data feed (vs solid process flow)
 }) {
   return (
     <line
@@ -93,9 +99,10 @@ function Arrow({
       y1={y1}
       x2={x2}
       y2={y2}
-      stroke="#8b949e"
+      stroke={feed ? "#6639ba" : "#8b949e"}
       strokeWidth={2}
-      markerEnd="url(#arrow)"
+      strokeDasharray={feed ? "6 4" : undefined}
+      markerEnd={feed ? "url(#arrow-feed)" : "url(#arrow)"}
     />
   );
 }
@@ -146,6 +153,17 @@ export default function LoopOverview() {
               orient="auto-start-reverse"
             >
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b949e" />
+            </marker>
+            <marker
+              id="arrow-feed"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#6639ba" />
             </marker>
           </defs>
 
@@ -219,11 +237,12 @@ export default function LoopOverview() {
           {/* synthesis -> assay -> ingest */}
           <Arrow x1={460} y1={390} x2={400} y2={390} />
           <Arrow x1={250} y1={390} x2={210} y2={390} />
-          {/* ingest -> activity store (feed) */}
-          <Arrow x1={125} y1={360} x2={125} y2={285} />
-          <Arrow x1={125} y1={285} x2={690} y2={240} />
-          {/* activity store -> generator (substrate feed, training) */}
-          <Arrow x1={760} y1={195} x2={125} y2={120} />
+          {/* ingest -> activity store (data feed, routed through the gap below
+              the gate so it never crosses a node box) */}
+          <Arrow x1={210} y1={362} x2={688} y2={276} feed />
+          {/* activity store -> generator (substrate + training feed, routed
+              through the gap above the gate) */}
+          <Arrow x1={760} y1={188} x2={214} y2={104} feed />
 
           {/* model-ready + blocked summary badges (clickable) */}
           <Stage

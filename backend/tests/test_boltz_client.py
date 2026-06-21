@@ -47,6 +47,15 @@ def test_cache_avoids_recompute():
     assert len(again) == 3
 
 
+def test_screen_results_aligned_to_input_order_with_partial_cache():
+    c = _mock_client()
+    smis = [x["smiles"] for x in c.design(TARGET, 5)]
+    # prime the cache with a middle subset, then screen the full list
+    c.screen(TARGET, [smis[2]])
+    out = c.screen(TARGET, smis)
+    assert [r["smiles"] for r in out] == smis  # one per input, in order
+
+
 def test_credit_guard_refuses_when_no_key_and_not_mock():
     # not mock, would attempt to charge; small cap -> refuse before spending
     c = BoltzClient(api_key="fake", mock=False, max_spend_usd=0.0)

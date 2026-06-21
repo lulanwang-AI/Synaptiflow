@@ -35,7 +35,7 @@ function CandidateCard({ c }: { c: AcquisitionCandidate }) {
         <span className="muted">Boltz affinity</span>
         <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
           {c.boltz_affinity != null ? fmtNum(c.boltz_affinity) : "—"}
-          <span className="predicted-badge">predicted · log-µM</span>
+          <span className="predicted-badge">PREDICTED · log-µM</span>
         </span>
         <span className="muted">ADMET</span>
         <span>
