@@ -3,6 +3,7 @@ import NavBar from "./components/NavBar";
 import { PersonaProvider } from "./lib/persona";
 import LoopOverview from "./views/LoopOverview";
 import Records from "./views/Records";
+import Intake from "./views/Intake";
 import Compound from "./views/Compound";
 import Acquisition from "./views/Acquisition";
 import MetricsView from "./views/Metrics";
@@ -14,6 +15,7 @@ export default function App() {
       <main className="app-main">
         <Routes>
           <Route path="/" element={<LoopOverview />} />
+          <Route path="/submit" element={<Intake />} />
           <Route path="/records" element={<Records />} />
           <Route path="/compound/:inchikey" element={<Compound />} />
           <Route path="/acquisition" element={<Acquisition />} />

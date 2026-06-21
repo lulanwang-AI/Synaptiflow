@@ -10,14 +10,16 @@ export const PERSONA_LABEL: Record<Persona, string> = {
 
 // Which routes each persona cares about (used to emphasise nav links).
 export const PERSONA_ROUTES: Record<Persona, string[]> = {
-  scientist: ["/records", "/compound"],
-  ml: ["/acquisition", "/records"],
+  scientist: ["/submit", "/records", "/compound"],
+  ml: ["/acquisition", "/records", "/submit"],
   manager: ["/", "/metrics"],
 };
 
 // Short per-view hint text shown when the persona is relevant to the view.
 export const PERSONA_HINTS: Record<Persona, Partial<Record<string, string>>> = {
   scientist: {
+    "/submit":
+      "Bench scientist view: log a measurement with its full semantics. The status you get back is the policy talking — fill the metadata and watch it go green, leave it out and see why it blocks.",
     "/records":
       "Bench scientist view: is your result usable? If a row is red, open it to see exactly which fields are missing and fix them inline.",
     "/compound":
@@ -28,6 +30,8 @@ export const PERSONA_HINTS: Record<Persona, Partial<Record<string, string>>> = {
       "ML engineer view: the ranked batch the loop wants made next. Watch the OOD flags and remember Boltz affinity is a ranking proxy, not ground truth.",
     "/records":
       "ML engineer view: this is the training set. Only model-ready (green) records feed the surrogate.",
+    "/submit":
+      "ML engineer view: every record you add here is potential training data — but only model-ready (green) rows reach the surrogate.",
   },
   manager: {
     "/":

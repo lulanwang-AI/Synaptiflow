@@ -10,6 +10,7 @@ import { api } from "../api/client";
 
 const LINKS: { to: string; label: string }[] = [
   { to: "/", label: "Loop overview" },
+  { to: "/submit", label: "Add data" },
   { to: "/records", label: "Records" },
   { to: "/acquisition", label: "Next batch" },
   { to: "/metrics", label: "Metrics" },
