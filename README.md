@@ -17,6 +17,21 @@ comparability.
 
 See `docs/context.md` and `docs/spec.md` for the full design.
 
+## Screenshots
+The five views, captured live (mock mode) via the headless-browser check in `e2e/`:
+
+| Loop overview (`/`) | Records (`/records`) |
+|---|---|
+| ![overview](docs/screenshots/overview.png) | ![records](docs/screenshots/records.png) |
+
+| Acquisition (`/acquisition`) | Compound (`/compound/:inchikey`) |
+|---|---|
+| ![acquisition](docs/screenshots/acquisition.png) | ![compound](docs/screenshots/compound.png) |
+
+Health / metrics (`/metrics`):
+
+![metrics](docs/screenshots/metrics.png)
+
 ---
 
 ## Quick start (mock mode — no API key, spends nothing)

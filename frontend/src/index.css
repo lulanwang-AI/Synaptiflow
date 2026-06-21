@@ -259,6 +259,8 @@ tbody tr.selected {
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
   text-transform: uppercase;
+  display: inline-block;
+  white-space: nowrap;
 }
 .measured-card {
   background: var(--green-bg);

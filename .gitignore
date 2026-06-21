@@ -6,3 +6,8 @@ __pycache__/
 node_modules/
 frontend/dist/
 .DS_Store
+
+# e2e artifacts (regenerable)
+e2e/shots/
+e2e/node_modules/
+e2e/package-lock.json

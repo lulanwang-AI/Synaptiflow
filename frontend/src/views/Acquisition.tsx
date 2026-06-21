@@ -13,44 +13,42 @@ function CandidateCard({ c }: { c: AcquisitionCandidate }) {
       className="panel"
       style={c.ood_flag ? { borderColor: "var(--red)", borderWidth: 2 } : undefined}
     >
-      <div style={{ display: "flex", gap: "0.75rem" }}>
+      <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
         <StructureCanvas smiles={c.smiles} width={120} height={100} />
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
             <span className={`tag tag-${c.tag === "exploit" ? "exploit" : "explore"}`}>
               {c.tag}
             </span>
             {c.ood_flag && <span className="ood-flag">⚠ OOD</span>}
-            <Link to={`/compound/${c.inchikey}`} className="mono" style={{ fontSize: "0.78rem" }}>
+            <Link to={`/compound/${c.inchikey}`} className="mono" style={{ fontSize: "0.78rem", wordBreak: "break-all" }}>
               {c.inchikey}
             </Link>
           </div>
-          <div className="kv" style={{ marginTop: "0.45rem" }}>
-            <span className="muted">Surrogate µ ± σ (pKi)</span>
-            <span>
-              <strong>{fmtNum(c.mu)}</strong> ± {fmtNum(c.sigma)}
-            </span>
-            <span className="muted">Boltz affinity</span>
-            <span>
-              {c.boltz_affinity != null ? fmtNum(c.boltz_affinity) : "—"}{" "}
-              <span className="predicted-badge" style={{ marginLeft: 4 }}>
-                proxy · log-µM · predicted
-              </span>
-            </span>
-            <span className="muted">ADMET</span>
-            <span>
-              {c.adme_flags.length
-                ? c.adme_flags.map((f) => (
-                    <span key={f} className="chip chip-warn">
-                      {f}
-                    </span>
-                  ))
-                : "clean"}
-            </span>
-            <span className="muted">Design run</span>
-            <span className="mono">{c.design_run_id ?? "—"}</span>
-          </div>
         </div>
+      </div>
+      <div className="kv" style={{ marginTop: "0.6rem" }}>
+        <span className="muted">Surrogate µ ± σ (pKi)</span>
+        <span>
+          <strong>{fmtNum(c.mu)}</strong> ± {fmtNum(c.sigma)}
+        </span>
+        <span className="muted">Boltz affinity</span>
+        <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+          {c.boltz_affinity != null ? fmtNum(c.boltz_affinity) : "—"}
+          <span className="predicted-badge">predicted · log-µM</span>
+        </span>
+        <span className="muted">ADMET</span>
+        <span>
+          {c.adme_flags.length
+            ? c.adme_flags.map((f) => (
+                <span key={f} className="chip chip-warn">
+                  {f}
+                </span>
+              ))
+            : "clean"}
+        </span>
+        <span className="muted">Design run</span>
+        <span className="mono" style={{ wordBreak: "break-all" }}>{c.design_run_id ?? "—"}</span>
       </div>
       <p style={{ marginTop: "0.6rem", marginBottom: 0, fontSize: "0.86rem" }}>
         <span className="muted">Rationale: </span>
