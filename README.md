@@ -84,6 +84,11 @@ Mock mode requires **no key** and spends **nothing**.
 ## Demo script (one cycle — spec §5)
 Run `BOLTZ_MOCK=1 make up` to rehearse with zero spend, or live mode within the cap.
 
+> Prefer one click? The **Workflow (`/workflow`)** view runs the whole loop as a
+> Dify-style node pipeline — press **Run full loop** (or step through Generate →
+> Approve → Replay) and watch each stage light up and the edges flow as the real
+> endpoints fire.
+
 1. **Overview (`/`)** — the two-loop flow with live counts: *N* model-ready,
    *M* blocked (blocked highlighted in red).
 1a. **Target (`/target`)** — the design substrate: the protein the generator
@@ -149,8 +154,8 @@ backend/   FastAPI + RDKit + scikit-learn; SQLite activity store
     boltz_client.py THE ONLY path to Boltz: mock mode, cache, credit guard (FROZEN interface)
     api/routes.py   the frozen API surface
     seed/           seed records.jsonl + target.json
-frontend/  React + Vite + TypeScript SPA (8 views: overview, target, intake, records,
-           compound, acquisition, synthesis queue, metrics), MSW mock fallback
+frontend/  React + Vite + TypeScript SPA (9 views: overview, workflow, target, intake,
+           records, compound, acquisition, synthesis queue, metrics), MSW mock fallback
 docs/      context.md, spec.md, openapi.json (the frozen contract)
 ```
 
