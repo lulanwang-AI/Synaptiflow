@@ -10,14 +10,16 @@ export const PERSONA_LABEL: Record<Persona, string> = {
 
 // Which routes each persona cares about (used to emphasise nav links).
 export const PERSONA_ROUTES: Record<Persona, string[]> = {
-  scientist: ["/submit", "/records", "/compound"],
-  ml: ["/acquisition", "/records", "/submit", "/target", "/synthesis", "/workflow"],
-  manager: ["/", "/metrics", "/target", "/synthesis", "/workflow"],
+  scientist: ["/discover", "/submit", "/records", "/compound"],
+  ml: ["/discover", "/acquisition", "/records", "/submit", "/target", "/synthesis", "/workflow"],
+  manager: ["/", "/discover", "/metrics", "/target", "/synthesis", "/workflow"],
 };
 
 // Short per-view hint text shown when the persona is relevant to the view.
 export const PERSONA_HINTS: Record<Persona, Partial<Record<string, string>>> = {
   scientist: {
+    "/discover":
+      "Bench scientist view: insert a target, run the pipeline, and review the proposed hits. You are the human in the loop — accept the ones worth testing.",
     "/submit":
       "Bench scientist view: log a measurement with its full semantics. The status you get back is the policy talking — fill the metadata and watch it go green, leave it out and see why it blocks.",
     "/records":
@@ -26,6 +28,8 @@ export const PERSONA_HINTS: Record<Persona, Partial<Record<string, string>>> = {
       "Bench scientist view: every measurement for this compound, grouped by what is actually comparable. Predictions are kept visually separate from measured values.",
   },
   ml: {
+    "/discover":
+      "ML engineer view: a custom target drives generation (POST /acquisition/run). Accepting hits returns ground truth and feeds the predicted-vs-measured delta back to the surrogate.",
     "/acquisition":
       "ML engineer view: the ranked batch the loop wants made next. Watch the OOD flags and remember Boltz affinity is a ranking proxy, not ground truth.",
     "/records":
@@ -40,6 +44,8 @@ export const PERSONA_HINTS: Record<Persona, Partial<Record<string, string>>> = {
       "ML engineer view: run the loop as a pipeline. Each node is a real call — generate/score/gate, approve, replay — so you can watch the data flow and the counts update.",
   },
   manager: {
+    "/discover":
+      "Manager view: the end-to-end story in one screen — insert a target, watch it process step by step, approve at the human gate, and see results feed back to the model.",
     "/":
       "Manager view: where is the loop stuck? The blocked count is the communication gap, shown as a number — click it to drill in.",
     "/metrics":

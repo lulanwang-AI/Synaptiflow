@@ -94,6 +94,12 @@ export const api = {
 
   acquisitionBatch: () => request<AcquisitionBatch>("/acquisition/batch"),
 
+  acquisitionRun: (target: Target) =>
+    request<AcquisitionBatch>("/acquisition/run", {
+      method: "POST",
+      body: JSON.stringify(target),
+    }),
+
   acquisitionApprove: () =>
     request<LoopSummary>("/acquisition/approve", { method: "POST" }),
 

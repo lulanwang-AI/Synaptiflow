@@ -92,6 +92,26 @@ def test_api_loop_queue_fills_on_approve_and_drains_on_replay():
         assert q2["depth"] == 0
 
 
+def test_api_acquisition_run_with_custom_target():
+    client = TestClient(app)
+    with client:
+        target = {
+            "name": "CUSTOM",
+            "protein_sequence": "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKR",
+            "chain_ids": ["A"],
+            "pocket_residues": [10, 12, 30],
+        }
+        batch = client.post("/acquisition/run", json=target).json()
+        assert batch["candidates"]
+        c = batch["candidates"][0]
+        for key in ("smiles", "inchikey", "mu", "sigma", "boltz_affinity", "tag", "rationale"):
+            assert key in c
+        # the cached batch can then be approved + replayed (human-in-the-loop)
+        client.post("/acquisition/approve")
+        q = client.get("/loop/queue").json()
+        assert q["depth"] == len(batch["candidates"])
+
+
 def test_api_metrics_has_credit_and_calibration_fields():
     client = TestClient(app)
     with client:

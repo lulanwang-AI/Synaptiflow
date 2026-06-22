@@ -88,6 +88,12 @@ Run `BOLTZ_MOCK=1 make up` to rehearse with zero spend, or live mode within the 
 > Dify-style node pipeline — press **Run full loop** (or step through Generate →
 > Approve → Replay) and watch each stage light up and the edges flow as the real
 > endpoints fire.
+>
+> For the guided story, **Discover (`/discover`)** is the step-by-step path:
+> insert a protein/peptide (and optional reference ligand), watch the left rail
+> animate each stage (`POST /acquisition/run`), review the proposed **hits**,
+> **accept** the ones to test (human-in-the-loop), then see the (randomized)
+> assay results and the predicted-vs-measured delta **fed back to the model**.
 
 1. **Overview (`/`)** — the two-loop flow with live counts: *N* model-ready,
    *M* blocked (blocked highlighted in red).
@@ -154,8 +160,8 @@ backend/   FastAPI + RDKit + scikit-learn; SQLite activity store
     boltz_client.py THE ONLY path to Boltz: mock mode, cache, credit guard (FROZEN interface)
     api/routes.py   the frozen API surface
     seed/           seed records.jsonl + target.json
-frontend/  React + Vite + TypeScript SPA (9 views: overview, workflow, target, intake,
-           records, compound, acquisition, synthesis queue, metrics), MSW mock fallback
+frontend/  React + Vite + TypeScript SPA (10 views: overview, discover, workflow, target,
+           intake, records, compound, acquisition, synthesis queue, metrics), MSW mock fallback
 docs/      context.md, spec.md, openapi.json (the frozen contract)
 ```
 

@@ -4,6 +4,7 @@ import NavBar from "./components/NavBar";
 import Sidebar from "./components/Sidebar";
 import { PersonaProvider } from "./lib/persona";
 import LoopOverview from "./views/LoopOverview";
+import Discover from "./views/Discover";
 import Workflow from "./views/Workflow";
 import TargetView from "./views/Target";
 import Records from "./views/Records";
@@ -43,6 +44,7 @@ export default function App() {
           <div key={location.pathname} className="view-anim">
             <Routes location={location}>
               <Route path="/" element={<LoopOverview />} />
+              <Route path="/discover" element={<Discover />} />
               <Route path="/workflow" element={<Workflow />} />
               <Route path="/target" element={<TargetView />} />
               <Route path="/submit" element={<Intake />} />

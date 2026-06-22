@@ -12,8 +12,8 @@ import { api } from "../api/client";
 // hideable sidebar.
 const TOP_LINKS: { to: string; label: string }[] = [
   { to: "/", label: "Overview" },
+  { to: "/discover", label: "Discover" },
   { to: "/workflow", label: "Workflow" },
-  { to: "/submit", label: "Add data" },
 ];
 
 export default function NavBar({ onToggleSidebar }: { onToggleSidebar: () => void }) {

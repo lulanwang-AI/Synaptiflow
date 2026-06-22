@@ -19,6 +19,7 @@ const GROUPS: Group[] = [
     title: "Monitor",
     items: [
       { to: "/", label: "Loop overview" },
+      { to: "/discover", label: "Discover" },
       { to: "/workflow", label: "Workflow" },
       { to: "/metrics", label: "Metrics" },
     ],

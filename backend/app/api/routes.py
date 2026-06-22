@@ -130,6 +130,18 @@ def acquisition_batch() -> AcquisitionBatch:
     return batch
 
 
+@router.post("/acquisition/run", response_model=AcquisitionBatch, tags=["acquisition"])
+def acquisition_run(target: Target) -> AcquisitionBatch:
+    """Generate hits against a user-supplied target (protein/peptide pocket).
+
+    Drives the same pipeline as /acquisition/batch but with the inserted target,
+    so the proposed hits respond to the input. The result is cached for approve.
+    """
+    batch = acquisition.build_batch(target)
+    _LAST_BATCH["batch"] = batch
+    return batch
+
+
 @router.post("/acquisition/approve", response_model=LoopSummary, tags=["acquisition"])
 def acquisition_approve() -> LoopSummary:
     batch = _LAST_BATCH["batch"]

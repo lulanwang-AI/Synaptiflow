@@ -343,6 +343,48 @@
         }
       }
     },
+    "/acquisition/run": {
+      "post": {
+        "tags": [
+          "acquisition"
+        ],
+        "summary": "Acquisition Run",
+        "description": "Generate hits against a user-supplied target (protein/peptide pocket).\n\nDrives the same pipeline as /acquisition/batch but with the inserted target,\nso the proposed hits respond to the input. The result is cached for approve.",
+        "operationId": "acquisition_run_acquisition_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Target"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcquisitionBatch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/acquisition/approve": {
       "post": {
         "tags": [

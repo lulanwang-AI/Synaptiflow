@@ -76,6 +76,10 @@ export const handlers = [
     http.get(u, () => HttpResponse.json(db.acquisitionBatch())),
   ),
 
+  ...route("/acquisition/run").map((u) =>
+    http.post(u, () => HttpResponse.json(db.acquisitionBatch())),
+  ),
+
   ...route("/acquisition/approve").map((u) =>
     http.post(u, () => HttpResponse.json(db.approveBatch())),
   ),
