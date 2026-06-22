@@ -349,17 +349,29 @@
           "acquisition"
         ],
         "summary": "Acquisition Run",
-        "description": "Generate hits against a user-supplied target (protein/peptide pocket).\n\nDrives the same pipeline as /acquisition/batch but with the inserted target,\nso the proposed hits respond to the input. The result is cached for approve.",
+        "description": "Generate hits against a user-supplied target (protein/peptide pocket).\n\nDrives the same pipeline as /acquisition/batch but with the inserted target,\nso the proposed hits respond to the input. `num_molecules` sizes the\ngeneration step. The result is cached for approve.",
         "operationId": "acquisition_run_acquisition_run_post",
+        "parameters": [
+          {
+            "name": "num_molecules",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 12,
+              "title": "Num Molecules"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/Target"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {

@@ -131,13 +131,15 @@ def acquisition_batch() -> AcquisitionBatch:
 
 
 @router.post("/acquisition/run", response_model=AcquisitionBatch, tags=["acquisition"])
-def acquisition_run(target: Target) -> AcquisitionBatch:
+def acquisition_run(target: Target, num_molecules: int = 12) -> AcquisitionBatch:
     """Generate hits against a user-supplied target (protein/peptide pocket).
 
     Drives the same pipeline as /acquisition/batch but with the inserted target,
-    so the proposed hits respond to the input. The result is cached for approve.
+    so the proposed hits respond to the input. `num_molecules` sizes the
+    generation step. The result is cached for approve.
     """
-    batch = acquisition.build_batch(target)
+    n = max(1, min(int(num_molecules), 40))
+    batch = acquisition.build_batch(target, num_molecules=n)
     _LAST_BATCH["batch"] = batch
     return batch
 

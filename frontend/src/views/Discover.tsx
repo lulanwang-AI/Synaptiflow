@@ -1,8 +1,13 @@
-// Guided discovery — the step-by-step experience. Insert a protein/peptide (and
-// optionally a reference ligand), press Start, and the left rail animates each
-// stage as the real pipeline runs (POST /acquisition/run → hits). The human
-// then reviews the hits and accepts the ones to test; accepting runs (randomized,
-// mocked) assays and feeds the predicted-vs-measured delta back to the model.
+// Guided discovery with a structure-based generative-screening setup inspired by
+// NVIDIA's generative virtual screening blueprint: fold the target (AlphaFold2),
+// generate candidates (MolMIM), dock & score (DiffDock + cheap surrogate), then
+// the acquisition gate. The left rail animates each stage. The human reviews the
+// hits, accepts the ones to test, and the predicted-vs-measured delta from the
+// (randomized, mocked) assays is fed back to the model.
+//
+// The fold/generate/dock compute is illustrative/mocked, as elsewhere in the
+// demo; the inserted sequence + pocket genuinely drive generation via
+// POST /acquisition/run.
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -15,13 +20,13 @@ import { PersonaHint } from "../lib/persona";
 
 type StepState = "idle" | "running" | "done";
 const STEP_DEFS = [
-  { key: "target", title: "Target", sub: "parse protein / ligand" },
-  { key: "generate", title: "Generate", sub: "Boltz design" },
-  { key: "score", title: "Score", sub: "surrogate µ ± σ" },
-  { key: "gate", title: "Acquisition gate", sub: "UCB + Boltz re-rank" },
-  { key: "review", title: "Human review", sub: "accept hits to test" },
-  { key: "assay", title: "Assays", sub: "randomized results" },
-  { key: "feedback", title: "Feedback", sub: "update the model" },
+  { key: "fold", title: "Fold target", sub: "predict 3-D structure", nim: "AlphaFold2" },
+  { key: "generate", title: "Generate", sub: "de novo / optimize", nim: "MolMIM" },
+  { key: "dock", title: "Dock & score", sub: "poses + surrogate µ,σ", nim: "DiffDock" },
+  { key: "gate", title: "Acquisition gate", sub: "UCB re-rank", nim: null },
+  { key: "review", title: "Human review", sub: "accept hits to test", nim: null },
+  { key: "assay", title: "Assays", sub: "randomized results", nim: null },
+  { key: "feedback", title: "Feedback", sub: "update the model", nim: null },
 ] as const;
 type StepKey = (typeof STEP_DEFS)[number]["key"];
 
@@ -31,13 +36,48 @@ const initSteps = (): Record<StepKey, StepState> =>
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const measuredLoguM = (kiM: number) => Math.log10(kiM / 1e-6);
 
+const hashStr = (s: string): number => {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+};
+const round1 = (x: number) => Math.round(x * 10) / 10;
+const parsePocket = (s: string): number[] =>
+  s
+    .split(/[\s,]+/)
+    .map((t) => parseInt(t, 10))
+    .filter((n) => Number.isFinite(n) && n > 0);
+function suggestPocket(seq: string, h: number): number[] {
+  const len = seq.length || 320;
+  const out: number[] = [];
+  let x = h || 1;
+  for (let i = 0; i < 8; i++) {
+    x = (Math.imul(x, 1664525) + 1013904223) >>> 0;
+    out.push((x % Math.max(1, len - 2)) + 1);
+  }
+  return Array.from(new Set(out)).sort((a, b) => a - b);
+}
+// DiffDock-style confidence: stronger (more negative) affinity → higher confidence.
+const dockConf = (aff: number | null | undefined): number =>
+  Math.max(0.05, Math.min(0.98, 0.62 - (aff ?? 0) * 0.13));
+
 type Phase = "input" | "processing" | "hits" | "testing" | "done";
+type GenMode = "denovo" | "optimize";
 
 export default function Discover() {
   const { data: example } = useAsync<Target>(() => api.target());
   const [protein, setProtein] = useState("");
-  const [pocket, setPocket] = useState<number[]>([]);
+  const [pocketStr, setPocketStr] = useState("");
   const [ligand, setLigand] = useState("");
+  const [folded, setFolded] = useState<{ plddt: number; pocket: number[] } | null>(null);
+  const [folding, setFolding] = useState(false);
+  const [genMode, setGenMode] = useState<GenMode>("denovo");
+  const [numMol, setNumMol] = useState(12);
+  const [useDocking, setUseDocking] = useState(true);
+
   const [phase, setPhase] = useState<Phase>("input");
   const [steps, setSteps] = useState<Record<StepKey, StepState>>(initSteps());
   const [hits, setHits] = useState<AcquisitionCandidate[]>([]);
@@ -51,8 +91,28 @@ export default function Discover() {
   function useExample() {
     if (!example) return;
     setProtein(example.protein_sequence);
-    setPocket(example.pocket_residues ?? []);
+    setPocketStr((example.pocket_residues ?? []).join(", "));
+    setFolded(null);
   }
+
+  async function fold() {
+    const seq = protein.trim();
+    if (!seq) {
+      setError("Enter a protein/peptide sequence to fold.");
+      return;
+    }
+    setError(null);
+    setFolding(true);
+    await delay(1100); // mock AlphaFold2
+    const h = hashStr(seq);
+    const f = { plddt: round1(72 + (h % 230) / 10), pocket: suggestPocket(seq, h) };
+    setFolded(f);
+    if (!parsePocket(pocketStr).length) setPocketStr(f.pocket.join(", "));
+    setFolding(false);
+  }
+
+  const configLabel = () =>
+    `${genMode === "optimize" ? "MolMIM · optimize from reference" : "MolMIM · de novo"} · ${numMol} molecules · DiffDock ${useDocking ? "re-rank on" : "off"}`;
 
   async function start() {
     const seq = protein.trim();
@@ -68,34 +128,52 @@ export default function Discover() {
     setAccepted({});
     setPhase("processing");
     try {
-      setStep("target", "running");
-      await delay(650);
-      setStep("target", "done");
+      // 1. Fold (AlphaFold2)
+      setStep("fold", "running");
+      let pocketArr = parsePocket(pocketStr);
+      if (!folded && seq) {
+        await delay(900);
+        const h = hashStr(seq);
+        const f = { plddt: round1(72 + (h % 230) / 10), pocket: suggestPocket(seq, h) };
+        setFolded(f);
+        if (!pocketArr.length) {
+          pocketArr = f.pocket;
+          setPocketStr(f.pocket.join(", "));
+        }
+      } else {
+        await delay(450);
+      }
+      setStep("fold", "done");
 
       const target: Target = {
         name:
-          example && seq === example.protein_sequence
-            ? example.name ?? "target"
-            : "custom-target",
+          example && seq === example.protein_sequence ? example.name ?? "target" : "custom-target",
         protein_sequence: seq || (example?.protein_sequence ?? ""),
         chain_ids: ["A"],
-        pocket_residues: pocket,
+        pocket_residues: pocketArr,
       };
 
+      // 2. Generate (MolMIM)
       setStep("generate", "running");
-      const batchP = api.acquisitionRun(target);
+      const batchP = api.acquisitionRun(target, numMol);
       await delay(700);
       setStep("generate", "done");
-      setStep("score", "running");
+      // 3. Dock & score (DiffDock + surrogate)
+      setStep("dock", "running");
       await delay(700);
-      setStep("score", "done");
+      setStep("dock", "done");
+      // 4. Acquisition gate
       setStep("gate", "running");
       const batch = await batchP;
-      await delay(500);
+      await delay(450);
       setStep("gate", "done");
 
-      setHits(batch.candidates);
-      setAccepted(Object.fromEntries(batch.candidates.map((c) => [c.inchikey, true])));
+      let cands = batch.candidates;
+      if (useDocking) {
+        cands = [...cands].sort((a, b) => dockConf(b.boltz_affinity) - dockConf(a.boltz_affinity));
+      }
+      setHits(cands);
+      setAccepted(Object.fromEntries(cands.map((c) => [c.inchikey, true])));
       setStep("review", "running");
       setPhase("hits");
     } catch (e) {
@@ -156,9 +234,13 @@ export default function Discover() {
     <div>
       <h1>Discover</h1>
       <p className="muted">
-        Insert a target, watch the pipeline run step by step, then review and
-        accept the proposed hits. Accepted hits get (mocked) assay results, and
-        the predicted-vs-measured delta is fed back to the model.
+        Structure-based generative screening: fold the target, generate and dock
+        candidates, then review and accept hits. Accepted hits get (mocked) assay
+        results, and the predicted-vs-measured delta is fed back to the model.
+        Pipeline tools after{" "}
+        <span className="nim-tag">AlphaFold2</span>{" "}
+        <span className="nim-tag">MolMIM</span>{" "}
+        <span className="nim-tag">DiffDock</span>.
       </p>
       <PersonaHint route="/discover" />
 
@@ -174,7 +256,10 @@ export default function Discover() {
                   <li key={s.key} className={`step ${st}`}>
                     <span className="step-icon">{st === "done" ? "✓" : i + 1}</span>
                     <span>
-                      <div className="step-title">{s.title}</div>
+                      <div className="step-title">
+                        {s.title}{" "}
+                        {s.nim && <span className="nim-tag">{s.nim}</span>}
+                      </div>
                       <div className="step-sub">{s.sub}</div>
                       {st === "running" && (
                         <div className="step-now">
@@ -182,8 +267,7 @@ export default function Discover() {
                             "● awaiting your decision"
                           ) : (
                             <>
-                              <span className="spinner" style={{ width: 11, height: 11 }} />{" "}
-                              working…
+                              <span className="spinner" style={{ width: 11, height: 11 }} /> working…
                             </>
                           )}
                         </div>
@@ -202,34 +286,131 @@ export default function Discover() {
 
           {phase === "input" && (
             <div className="panel">
-              <h3 style={{ marginTop: 0 }}>Insert a target</h3>
-              <div className="form-row">
-                <label>Protein / peptide sequence</label>
-                <textarea
-                  rows={5}
-                  placeholder="Paste a protein or peptide sequence (one-letter codes)…"
-                  value={protein}
-                  onChange={(e) => setProtein(e.target.value)}
-                  style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.8rem" }}
-                />
-                <span className="field-hint">
-                  {protein.trim() ? `${protein.trim().length} residues` : "required (or provide a ligand)"}
-                  {pocket.length > 0 && ` · pocket: ${pocket.join(", ")}`}
-                </span>
+              <h3 style={{ marginTop: 0 }}>Set up the screen</h3>
+
+              {/* A. Structure — AlphaFold2 */}
+              <div className="setup-section">
+                <div className="setup-head">
+                  <span className="nim-tag">AlphaFold2</span> Target structure
+                </div>
+                <div className="form-row">
+                  <label>Protein / peptide sequence</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Paste a protein or peptide sequence (one-letter codes)…"
+                    value={protein}
+                    onChange={(e) => {
+                      setProtein(e.target.value);
+                      setFolded(null);
+                    }}
+                    style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.8rem" }}
+                  />
+                  <span className="field-hint">
+                    {protein.trim() ? `${protein.trim().length} residues` : "required (or provide a ligand)"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+                  <button className="btn" onClick={fold} disabled={folding || !protein.trim()}>
+                    {folding ? <span className="spinner" /> : "⚛"}&nbsp; Predict structure
+                  </button>
+                  {folded && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", fontSize: "0.82rem" }}>
+                      <span className="nim-tag" style={{ background: "#e6f4ea" }}>structure ready</span>
+                      pLDDT {folded.plddt}
+                      <span className="conf-bar" style={{ width: 110 }}>
+                        <span
+                          className="conf-fill"
+                          style={{
+                            width: `${folded.plddt}%`,
+                            background: "linear-gradient(90deg,#34c759,#86e0a0)",
+                          }}
+                        />
+                      </span>
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="form-row">
-                <label>Reference ligand SMILES (optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Cc1ccc(cc1)S(=O)(=O)N"
-                  value={ligand}
-                  onChange={(e) => setLigand(e.target.value)}
-                />
+
+              {/* B. Binding pocket */}
+              <div className="setup-section">
+                <div className="setup-head">Binding pocket</div>
+                <div className="form-row">
+                  <label>Pocket residues (comma-separated)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 78, 80, 83, 128, 130"
+                    value={pocketStr}
+                    onChange={(e) => setPocketStr(e.target.value)}
+                  />
+                  <span className="field-hint">
+                    {parsePocket(pocketStr).length} residue(s) define the docking site.
+                  </span>
+                </div>
+                <button
+                  className="btn"
+                  onClick={() => folded && setPocketStr(folded.pocket.join(", "))}
+                  disabled={!folded}
+                >
+                  Use predicted pocket
+                </button>
               </div>
-              {ligand.trim() && (
-                <StructureCanvas smiles={ligand} width={160} height={110} />
-              )}
-              <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem", flexWrap: "wrap" }}>
+
+              {/* C. Generation — MolMIM */}
+              <div className="setup-section">
+                <div className="setup-head">
+                  <span className="nim-tag">MolMIM</span> Generation
+                </div>
+                <div style={{ display: "flex", gap: "0.8rem", alignItems: "center", flexWrap: "wrap" }}>
+                  <div className="seg">
+                    <button className={genMode === "denovo" ? "on" : ""} onClick={() => setGenMode("denovo")}>
+                      De novo
+                    </button>
+                    <button className={genMode === "optimize" ? "on" : ""} onClick={() => setGenMode("optimize")}>
+                      Optimize reference
+                    </button>
+                  </div>
+                  <label style={{ fontSize: "0.84rem", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                    Molecules:
+                    <input
+                      type="number"
+                      min={4}
+                      max={40}
+                      value={numMol}
+                      onChange={(e) => setNumMol(Math.max(4, Math.min(40, Number(e.target.value) || 12)))}
+                      style={{ width: 70, padding: "0.3rem 0.4rem", border: "1px solid var(--line)", borderRadius: 6 }}
+                    />
+                  </label>
+                </div>
+                {genMode === "optimize" && (
+                  <div className="form-row" style={{ marginTop: "0.6rem" }}>
+                    <label>Reference ligand SMILES</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Cc1ccc(cc1)S(=O)(=O)N"
+                      value={ligand}
+                      onChange={(e) => setLigand(e.target.value)}
+                    />
+                    {ligand.trim() && <StructureCanvas smiles={ligand} width={150} height={100} />}
+                  </div>
+                )}
+              </div>
+
+              {/* D. Docking — DiffDock */}
+              <div className="setup-section">
+                <div className="setup-head">
+                  <span className="nim-tag">DiffDock</span> Docking
+                </div>
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={useDocking}
+                    onChange={(e) => setUseDocking(e.target.checked)}
+                  />
+                  Re-rank hits by predicted docking confidence
+                </label>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.4rem", flexWrap: "wrap" }}>
                 <button className="btn btn-primary" onClick={start}>
                   Start discovery ▸
                 </button>
@@ -244,10 +425,8 @@ export default function Discover() {
             <div className="panel" style={{ display: "flex", alignItems: "center", gap: "0.7rem" }}>
               <span className="spinner" />
               <div>
-                <strong>Analyzing target and generating candidates…</strong>
-                <div className="muted" style={{ fontSize: "0.82rem" }}>
-                  Boltz design → cheap surrogate → acquisition gate.
-                </div>
+                <strong>Folding, generating, and docking candidates…</strong>
+                <div className="muted" style={{ fontSize: "0.82rem" }}>{configLabel()}</div>
               </div>
             </div>
           )}
@@ -257,6 +436,7 @@ export default function Discover() {
               <div className="persona-hint">
                 <strong>Human-in-the-loop:</strong> review the proposed hits and
                 accept the ones to send for testing. {acceptedCount} of {hits.length} selected.
+                <div className="muted" style={{ marginTop: "0.2rem", fontSize: "0.78rem" }}>{configLabel()}</div>
               </div>
               <div className="grid-cards">
                 {hits.map((h) => {
@@ -285,6 +465,20 @@ export default function Discover() {
                           </div>
                         </div>
                         <div className="kv" style={{ marginTop: "0.5rem", fontSize: "0.84rem" }}>
+                          {useDocking && (
+                            <>
+                              <span className="muted">DiffDock conf.</span>
+                              <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                <span className="conf-bar" style={{ width: 80 }}>
+                                  <span
+                                    className="conf-fill"
+                                    style={{ width: `${Math.round(dockConf(h.boltz_affinity) * 100)}%`, background: "var(--brand)" }}
+                                  />
+                                </span>
+                                {fmtNum(dockConf(h.boltz_affinity), 2)}
+                              </span>
+                            </>
+                          )}
                           <span className="muted">µ ± σ (pKi)</span>
                           <span><strong>{fmtNum(h.mu)}</strong> ± {fmtNum(h.sigma)}</span>
                           <span className="muted">Boltz affinity</span>
