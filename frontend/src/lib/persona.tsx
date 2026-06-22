@@ -11,8 +11,8 @@ export const PERSONA_LABEL: Record<Persona, string> = {
 // Which routes each persona cares about (used to emphasise nav links).
 export const PERSONA_ROUTES: Record<Persona, string[]> = {
   scientist: ["/submit", "/records", "/compound"],
-  ml: ["/acquisition", "/records", "/submit", "/target", "/synthesis"],
-  manager: ["/", "/metrics", "/target", "/synthesis"],
+  ml: ["/acquisition", "/records", "/submit", "/target", "/synthesis", "/workflow"],
+  manager: ["/", "/metrics", "/target", "/synthesis", "/workflow"],
 };
 
 // Short per-view hint text shown when the persona is relevant to the view.
@@ -36,12 +36,16 @@ export const PERSONA_HINTS: Record<Persona, Partial<Record<string, string>>> = {
       "ML engineer view: the substrate the generator designs against. Boltz design/screen operate on this pocket — candidates are ranked relative to this construct.",
     "/synthesis":
       "ML engineer view: approved candidates awaiting results. Replaying closes the loop — returned Ki becomes training data and updates predicted-vs-measured calibration.",
+    "/workflow":
+      "ML engineer view: run the loop as a pipeline. Each node is a real call — generate/score/gate, approve, replay — so you can watch the data flow and the counts update.",
   },
   manager: {
     "/":
       "Manager view: where is the loop stuck? The blocked count is the communication gap, shown as a number — click it to drill in.",
     "/metrics":
       "Manager view: throughput, blocked-by-reason, Boltz credit spend, and surrogate calibration over closed cycles.",
+    "/workflow":
+      "Manager view: the whole DMTA loop as one runnable pipeline. Press Run full loop to turn the crank once and watch each stage complete.",
     "/target":
       "Manager view: the project target. This single construct anchors the whole loop — design, scoring, and the comparability of every measurement key off it.",
     "/synthesis":
