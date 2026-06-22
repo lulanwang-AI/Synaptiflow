@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Closed-Loop Discovery MVP",
+    title="SynaptiFlow — Closed-Loop Discovery MVP",
     version="0.1.0",
     description=(
         "Assay-metadata schema as the spine of wet↔dry communication. "
