@@ -36,31 +36,13 @@ const initSteps = (): Record<StepKey, StepState> =>
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const measuredLoguM = (kiM: number) => Math.log10(kiM / 1e-6);
 
-const hashStr = (s: string): number => {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-};
-const round1 = (x: number) => Math.round(x * 10) / 10;
 const parsePocket = (s: string): number[] =>
   s
     .split(/[\s,]+/)
     .map((t) => parseInt(t, 10))
     .filter((n) => Number.isFinite(n) && n > 0);
-function suggestPocket(seq: string, h: number): number[] {
-  const len = seq.length || 320;
-  const out: number[] = [];
-  let x = h || 1;
-  for (let i = 0; i < 8; i++) {
-    x = (Math.imul(x, 1664525) + 1013904223) >>> 0;
-    out.push((x % Math.max(1, len - 2)) + 1);
-  }
-  return Array.from(new Set(out)).sort((a, b) => a - b);
-}
-// DiffDock-style confidence: stronger (more negative) affinity → higher confidence.
+// Fallback DiffDock-style confidence if /dock is unavailable: stronger (more
+// negative) affinity → higher confidence.
 const dockConf = (aff: number | null | undefined): number =>
   Math.max(0.05, Math.min(0.98, 0.62 - (aff ?? 0) * 0.13));
 
@@ -84,9 +66,21 @@ export default function Discover() {
   const [accepted, setAccepted] = useState<Record<string, boolean>>({});
   const [results, setResults] = useState<AssayRecord[]>([]);
   const [calib, setCalib] = useState<number | null>(null);
+  const [dockMap, setDockMap] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
   const setStep = (k: StepKey, s: StepState) => setSteps((p) => ({ ...p, [k]: s }));
+
+  function currentTarget(): Target {
+    const seq = protein.trim();
+    return {
+      name:
+        example && seq === example.protein_sequence ? example.name ?? "target" : "custom-target",
+      protein_sequence: seq || (example?.protein_sequence ?? ""),
+      chain_ids: ["A"],
+      pocket_residues: parsePocket(pocketStr),
+    };
+  }
 
   function useExample() {
     if (!example) return;
@@ -96,19 +90,21 @@ export default function Discover() {
   }
 
   async function fold() {
-    const seq = protein.trim();
-    if (!seq) {
+    if (!protein.trim()) {
       setError("Enter a protein/peptide sequence to fold.");
       return;
     }
     setError(null);
     setFolding(true);
-    await delay(1100); // mock AlphaFold2
-    const h = hashStr(seq);
-    const f = { plddt: round1(72 + (h % 230) / 10), pocket: suggestPocket(seq, h) };
-    setFolded(f);
-    if (!parsePocket(pocketStr).length) setPocketStr(f.pocket.join(", "));
-    setFolding(false);
+    try {
+      const f = await api.foldStructure(currentTarget()); // AlphaFold2 (mock or live NIM)
+      setFolded({ plddt: f.plddt, pocket: f.pocket_residues });
+      if (!parsePocket(pocketStr).length) setPocketStr(f.pocket_residues.join(", "));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFolding(false);
+    }
   }
 
   const configLabel = () =>
@@ -125,53 +121,53 @@ export default function Discover() {
     setHits([]);
     setResults([]);
     setCalib(null);
+    setDockMap({});
     setAccepted({});
     setPhase("processing");
     try {
       // 1. Fold (AlphaFold2)
       setStep("fold", "running");
-      let pocketArr = parsePocket(pocketStr);
-      if (!folded && seq) {
-        await delay(900);
-        const h = hashStr(seq);
-        const f = { plddt: round1(72 + (h % 230) / 10), pocket: suggestPocket(seq, h) };
-        setFolded(f);
-        if (!pocketArr.length) {
-          pocketArr = f.pocket;
-          setPocketStr(f.pocket.join(", "));
+      const target = currentTarget();
+      if (!folded) {
+        const f = await api.foldStructure(target);
+        setFolded({ plddt: f.plddt, pocket: f.pocket_residues });
+        if (!target.pocket_residues.length) {
+          target.pocket_residues = f.pocket_residues;
+          setPocketStr(f.pocket_residues.join(", "));
         }
       } else {
+        target.pocket_residues = folded.pocket;
         await delay(450);
       }
       setStep("fold", "done");
 
-      const target: Target = {
-        name:
-          example && seq === example.protein_sequence ? example.name ?? "target" : "custom-target",
-        protein_sequence: seq || (example?.protein_sequence ?? ""),
-        chain_ids: ["A"],
-        pocket_residues: pocketArr,
-      };
-
-      // 2. Generate (MolMIM)
+      // 2. Generate (MolMIM) → surrogate score + acquisition gate (server-side)
       setStep("generate", "running");
-      const batchP = api.acquisitionRun(target, numMol);
-      await delay(700);
+      const batch = await api.acquisitionRun(target, numMol);
+      await delay(500);
       setStep("generate", "done");
-      // 3. Dock & score (DiffDock + surrogate)
+
+      // 3. Dock the proposed hits (DiffDock)
       setStep("dock", "running");
-      await delay(700);
+      const dmap: Record<string, number> = {};
+      try {
+        const dres = await api.dock(target, batch.candidates.map((c) => c.smiles));
+        for (const r of dres.results) dmap[r.smiles] = r.dock_confidence;
+      } catch {
+        /* fall back to derived confidence */
+      }
+      setDockMap(dmap);
+      await delay(350);
       setStep("dock", "done");
-      // 4. Acquisition gate
+
+      // 4. Acquisition gate (final re-rank by docking confidence if enabled)
       setStep("gate", "running");
-      const batch = await batchP;
-      await delay(450);
+      await delay(350);
       setStep("gate", "done");
 
+      const confOf = (h: AcquisitionCandidate) => dmap[h.smiles] ?? dockConf(h.boltz_affinity);
       let cands = batch.candidates;
-      if (useDocking) {
-        cands = [...cands].sort((a, b) => dockConf(b.boltz_affinity) - dockConf(a.boltz_affinity));
-      }
+      if (useDocking) cands = [...cands].sort((a, b) => confOf(b) - confOf(a));
       setHits(cands);
       setAccepted(Object.fromEntries(cands.map((c) => [c.inchikey, true])));
       setStep("review", "running");
@@ -221,6 +217,7 @@ export default function Discover() {
     setHits([]);
     setResults([]);
     setCalib(null);
+    setDockMap({});
     setAccepted({});
     setError(null);
   }
@@ -472,10 +469,13 @@ export default function Discover() {
                                 <span className="conf-bar" style={{ width: 80 }}>
                                   <span
                                     className="conf-fill"
-                                    style={{ width: `${Math.round(dockConf(h.boltz_affinity) * 100)}%`, background: "var(--brand)" }}
+                                    style={{
+                                      width: `${Math.round((dockMap[h.smiles] ?? dockConf(h.boltz_affinity)) * 100)}%`,
+                                      background: "var(--brand)",
+                                    }}
                                   />
                                 </span>
-                                {fmtNum(dockConf(h.boltz_affinity), 2)}
+                                {fmtNum(dockMap[h.smiles] ?? dockConf(h.boltz_affinity), 2)}
                               </span>
                             </>
                           )}

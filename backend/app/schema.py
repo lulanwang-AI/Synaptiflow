@@ -287,3 +287,27 @@ class QueueItem(BaseModel):
 class QueueView(BaseModel):
     depth: int = 0
     items: list[QueueItem] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------- #
+# NIM structure tier (AlphaFold2 fold + DiffDock dock)
+# --------------------------------------------------------------------------- #
+class FoldResult(BaseModel):
+    plddt: float = Field(..., description="Mean predicted structure confidence (pLDDT)")
+    pocket_residues: list[int] = Field(default_factory=list)
+    model: str = "alphafold2"
+
+
+class DockRequest(BaseModel):
+    target: Target
+    smiles: list[str] = Field(default_factory=list)
+
+
+class DockResult(BaseModel):
+    smiles: str
+    dock_confidence: float = Field(..., description="DiffDock pose confidence (0–1)")
+    model: str = "diffdock"
+
+
+class DockResponse(BaseModel):
+    results: list[DockResult] = Field(default_factory=list)

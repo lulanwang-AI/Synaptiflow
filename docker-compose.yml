@@ -11,6 +11,12 @@ services:
       BOLTZ_MOCK: "${BOLTZ_MOCK:-1}"
       BOLTZ_API_KEY: "${BOLTZ_API_KEY:-}"
       BOLTZ_MAX_SPEND_USD: "${BOLTZ_MAX_SPEND_USD:-50}"
+      # NVIDIA NIM tier (AlphaFold2 / MolMIM / DiffDock). Mock by default;
+      # set NIM_MOCK=0 + NVIDIA_API_KEY for live NIM calls. BoltzMol stays the
+      # default generator unless GENERATOR_ENGINE=molmim.
+      NIM_MOCK: "${NIM_MOCK:-1}"
+      NVIDIA_API_KEY: "${NVIDIA_API_KEY:-}"
+      GENERATOR_ENGINE: "${GENERATOR_ENGINE:-boltz}"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   frontend:

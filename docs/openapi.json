@@ -418,6 +418,88 @@
         }
       }
     },
+    "/structure/fold": {
+      "post": {
+        "tags": [
+          "structure"
+        ],
+        "summary": "Structure Fold",
+        "operationId": "structure_fold_structure_fold_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Target"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoldResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dock": {
+      "post": {
+        "tags": [
+          "structure"
+        ],
+        "summary": "Dock",
+        "operationId": "dock_dock_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/metrics": {
       "get": {
         "tags": [
@@ -1153,6 +1235,88 @@
         },
         "type": "object",
         "title": "Conditions"
+      },
+      "DockRequest": {
+        "properties": {
+          "target": {
+            "$ref": "#/components/schemas/Target"
+          },
+          "smiles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Smiles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target"
+        ],
+        "title": "DockRequest"
+      },
+      "DockResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/DockResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "title": "DockResponse"
+      },
+      "DockResult": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "dock_confidence": {
+            "type": "number",
+            "title": "Dock Confidence",
+            "description": "DiffDock pose confidence (0\u20131)"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "diffdock"
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles",
+          "dock_confidence"
+        ],
+        "title": "DockResult"
+      },
+      "FoldResult": {
+        "properties": {
+          "plddt": {
+            "type": "number",
+            "title": "Plddt",
+            "description": "Mean predicted structure confidence (pLDDT)"
+          },
+          "pocket_residues": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pocket Residues"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "alphafold2"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plddt"
+        ],
+        "title": "FoldResult"
       },
       "HTTPValidationError": {
         "properties": {

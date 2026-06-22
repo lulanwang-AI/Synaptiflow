@@ -4,7 +4,7 @@
 import { http, HttpResponse } from "msw";
 import { API_BASE } from "../api/client";
 import * as db from "./data";
-import type { AssayRecordIn, RecordPatch, ReplayRequest } from "../api/types";
+import type { AssayRecordIn, RecordPatch, ReplayRequest, Target } from "../api/types";
 
 // Match both the configured base URL and same-origin relative paths,
 // so the worker intercepts regardless of how the client is configured.
@@ -78,6 +78,20 @@ export const handlers = [
 
   ...route("/acquisition/run").map((u) =>
     http.post(u, () => HttpResponse.json(db.acquisitionBatch())),
+  ),
+
+  ...route("/structure/fold").map((u) =>
+    http.post(u, async ({ request }) => {
+      const target = (await request.json()) as Target;
+      return HttpResponse.json(db.foldMock(target));
+    }),
+  ),
+
+  ...route("/dock").map((u) =>
+    http.post(u, async ({ request }) => {
+      const body = (await request.json()) as { smiles?: string[] };
+      return HttpResponse.json(db.dockMock(body.smiles ?? []));
+    }),
   ),
 
   ...route("/acquisition/approve").map((u) =>

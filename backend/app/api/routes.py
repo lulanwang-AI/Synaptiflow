@@ -15,6 +15,10 @@ from ..schema import (
     AssayRecord,
     AssayRecordIn,
     CompoundView,
+    DockRequest,
+    DockResponse,
+    DockResult,
+    FoldResult,
     IngestResponse,
     LoopSummary,
     Metrics,
@@ -25,6 +29,7 @@ from ..schema import (
     ResetResponse,
     Target,
 )
+from ..nim_client import get_nim_client
 from ..store import get_store
 
 router = APIRouter()
@@ -156,6 +161,23 @@ def acquisition_approve() -> LoopSummary:
 
 
 # --------------------------------------------------------------------------- #
+# Structure tier — AlphaFold2 fold + DiffDock dock (via nim_client)
+# --------------------------------------------------------------------------- #
+@router.post("/structure/fold", response_model=FoldResult, tags=["structure"])
+def structure_fold(target: Target) -> FoldResult:
+    r = get_nim_client().fold(target)
+    return FoldResult(
+        plddt=r["plddt"], pocket_residues=r["pocket_residues"], model=r["model"]
+    )
+
+
+@router.post("/dock", response_model=DockResponse, tags=["structure"])
+def dock(req: DockRequest) -> DockResponse:
+    results = get_nim_client().dock(req.target, req.smiles)
+    return DockResponse(results=[DockResult(**x) for x in results])
+
+
+# --------------------------------------------------------------------------- #
 # Metrics / target / reset
 # --------------------------------------------------------------------------- #
 @router.get("/metrics", response_model=Metrics, tags=["metrics"])
@@ -172,10 +194,12 @@ def get_target() -> Target:
 @router.post("/reset", response_model=ResetResponse, tags=["loop"])
 def reset() -> ResetResponse:
     from ..boltz_client import reset_client
+    from ..nim_client import reset_nim_client
     from ..surrogate import reset_surrogate
 
     n = seed_loader.seed_store()
     reset_surrogate()
     reset_client()
+    reset_nim_client()
     _LAST_BATCH["batch"] = None
     return ResetResponse(ok=True, records=n)

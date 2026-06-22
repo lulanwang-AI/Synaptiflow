@@ -8,6 +8,8 @@ import type {
   AssayRecord,
   AssayRecordIn,
   CompoundView,
+  DockResponse,
+  FoldResult,
   IngestResponse,
   LoopSummary,
   Metrics,
@@ -102,6 +104,18 @@ export const api = {
         body: JSON.stringify(target),
       },
     ),
+
+  foldStructure: (target: Target) =>
+    request<FoldResult>("/structure/fold", {
+      method: "POST",
+      body: JSON.stringify(target),
+    }),
+
+  dock: (target: Target, smiles: string[]) =>
+    request<DockResponse>("/dock", {
+      method: "POST",
+      body: JSON.stringify({ target, smiles }),
+    }),
 
   acquisitionApprove: () =>
     request<LoopSummary>("/acquisition/approve", { method: "POST" }),

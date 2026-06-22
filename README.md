@@ -94,6 +94,12 @@ Run `BOLTZ_MOCK=1 make up` to rehearse with zero spend, or live mode within the 
 > animate each stage (`POST /acquisition/run`), review the proposed **hits**,
 > **accept** the ones to test (human-in-the-loop), then see the (randomized)
 > assay results and the predicted-vs-measured delta **fed back to the model**.
+> The target-selection stage adds a structure-based screening tier —
+> **AlphaFold2** fold (`POST /structure/fold`), **MolMIM** generation, and
+> **DiffDock** dock (`POST /dock`) — behind `nim_client.py`, mirroring
+> `boltz_client.py`: mock by default (`NIM_MOCK=1`), live when `NIM_MOCK=0` +
+> `NVIDIA_API_KEY` are set. **BoltzMol stays the default generator/oracle**;
+> MolMIM is opt-in via `GENERATOR_ENGINE=molmim`.
 
 1. **Overview (`/`)** — the two-loop flow with live counts: *N* model-ready,
    *M* blocked (blocked highlighted in red).

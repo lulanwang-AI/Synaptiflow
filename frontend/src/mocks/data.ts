@@ -12,6 +12,8 @@ import type {
   AssayRecordIn,
   BlockedReason,
   CompoundView,
+  DockResponse,
+  FoldResult,
   LoopSummary,
   Metrics,
   Prediction,
@@ -21,6 +23,16 @@ import type {
   RecordStatus,
   Target,
 } from "../api/types";
+
+// deterministic 32-bit hash for mock NIM outputs
+function hash32(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
 
 // --- pseudo identity derivation (deterministic, no RDKit in the browser) ---
 function fakeInchikey(smiles: string): string {
@@ -639,6 +651,35 @@ export function patchRecord(
 export function queueView(): QueueView {
   const s = getState();
   return { depth: s.queue.length, items: JSON.parse(JSON.stringify(s.queue)) };
+}
+
+// --- NIM tier mocks (AlphaFold2 fold, DiffDock dock) ---
+export function foldMock(target: Target): FoldResult {
+  const seq = target.protein_sequence ?? "";
+  const h = hash32(seq);
+  const plddt = Math.round((72 + (h % 230) / 10) * 10) / 10; // 72.0–95.0
+  let pocket = target.pocket_residues ?? [];
+  if (!pocket.length) {
+    const len = seq.length || 320;
+    const set = new Set<number>();
+    let x = h || 1;
+    for (let i = 0; i < 8; i++) {
+      x = (Math.imul(x, 1664525) + 1013904223) >>> 0;
+      set.add((x % Math.max(2, len - 1)) + 1);
+    }
+    pocket = Array.from(set).sort((a, b) => a - b);
+  }
+  return { plddt, pocket_residues: pocket, model: "alphafold2" };
+}
+
+export function dockMock(smiles: string[]): DockResponse {
+  return {
+    results: smiles.map((s) => {
+      const h = hash32("dock|" + s);
+      const conf = Math.round((0.4 + ((h % 1000) / 1000) * 0.55) * 1000) / 1000;
+      return { smiles: s, dock_confidence: conf, model: "diffdock" };
+    }),
+  };
 }
 
 export function approveBatch() {

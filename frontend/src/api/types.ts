@@ -211,3 +211,19 @@ export interface QueueView {
   depth: number;
   items: QueueItem[];
 }
+
+export interface FoldResult {
+  plddt: number;
+  pocket_residues: number[];
+  model: string;
+}
+
+export interface DockResult {
+  smiles: string;
+  dock_confidence: number;
+  model: string;
+}
+
+export interface DockResponse {
+  results: DockResult[];
+}
