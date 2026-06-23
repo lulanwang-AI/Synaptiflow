@@ -98,10 +98,11 @@ Run `BOLTZ_MOCK=1 make up` to rehearse with zero spend, or live mode within the 
 > **AlphaFold2** fold (`POST /structure/fold`), **MolMIM** generation, and
 > **DiffDock** dock (`POST /dock`) + 3-D pose (`POST /structure/pose`) — behind
 > `nim_client.py`, mirroring `boltz_client.py`: mock by default (`NIM_MOCK=1`),
-> live when `NIM_MOCK=0` + `NVIDIA_API_KEY` are set. Each hit has a **View 3D
-> pose** button that renders the docked conformer in a WebGL viewer (3Dmol.js;
-> the mock 3-D comes from RDKit). **BoltzMol stays the default
-> generator/oracle**; MolMIM is opt-in via `GENERATOR_ENGINE=molmim`.
+> live when `NIM_MOCK=0` + `NVIDIA_API_KEY` are set. Each hit (on **Discover**
+> and **Next batch**) has a **View 3D pose** button that renders the docked
+> conformer in a WebGL viewer (3Dmol.js), overlaying the folded receptor cartoon
+> when a structure is available (mock 3-D from RDKit). **BoltzMol stays the
+> default generator/oracle**; MolMIM is opt-in via `GENERATOR_ENGINE=molmim`.
 
 1. **Overview (`/`)** — the two-loop flow with live counts: *N* model-ready,
    *M* blocked (blocked highlighted in red).

@@ -231,5 +231,6 @@ export interface DockResponse {
 export interface PoseResult {
   smiles: string;
   sdf?: string | null;
+  receptor_pdb?: string | null;
   model: string;
 }

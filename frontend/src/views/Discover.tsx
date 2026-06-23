@@ -76,6 +76,7 @@ export default function Discover() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [poseHit, setPoseHit] = useState<AcquisitionCandidate | null>(null);
+  const [runTarget, setRunTarget] = useState<Target | null>(null);
 
   const setStep = (k: StepKey, s: StepState) => setSteps((p) => ({ ...p, [k]: s }));
 
@@ -152,6 +153,7 @@ export default function Discover() {
         target.pocket_residues = folded.pocket;
         await delay(450);
       }
+      setRunTarget(target);
       setStep("fold", "done");
 
       // 2. Generate (MolMIM) → surrogate score + acquisition gate (server-side)
@@ -241,6 +243,8 @@ export default function Discover() {
     setCalib(null);
     setDockMap({});
     setRunStats(null);
+    setRunTarget(null);
+    setPoseHit(null);
     setAccepted({});
     setError(null);
   }
@@ -616,6 +620,7 @@ export default function Discover() {
         <Suspense fallback={null}>
           <PoseViewer
             smiles={poseHit.smiles}
+            target={runTarget}
             confidence={dockMap[poseHit.smiles] ?? dockConf(poseHit.boltz_affinity)}
             pocket={folded?.pocket ?? parsePocket(pocketStr)}
             onClose={() => setPoseHit(null)}

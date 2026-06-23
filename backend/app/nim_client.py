@@ -152,7 +152,36 @@ class NimClient:
         if not pocket:
             length = len(getattr(target, "protein_sequence", "") or "") or 320
             pocket = sorted({rng.randint(1, max(2, length - 1)) for _ in range(8)})
-        return {"plddt": plddt, "pocket_residues": pocket, "model": "alphafold2"}
+        pdb = self._mock_receptor_pdb(getattr(target, "protein_sequence", "") or "")
+        return {"plddt": plddt, "pocket_residues": pocket, "model": "alphafold2", "pdb": pdb}
+
+    def _mock_receptor_pdb(self, sequence: str) -> Optional[str]:
+        """An illustrative 3-D receptor fragment (first residues) via RDKit.
+
+        Real AlphaFold2 returns the full predicted structure; in mock mode we
+        build a short, real 3-D peptide fragment so the pose viewer has receptor
+        context. Long proteins are truncated for speed; returns None on failure.
+        """
+        frag = "".join(c for c in sequence.upper() if c in "ACDEFGHIKLMNPQRSTVWY")[:14]
+        if len(frag) < 4:
+            return None
+        try:
+            from rdkit import Chem
+            from rdkit.Chem import AllChem
+
+            mol = Chem.MolFromSequence(frag)
+            if mol is None:
+                return None
+            mol = Chem.AddHs(mol)
+            params = AllChem.ETKDGv3()
+            params.randomSeed = _seed("fold-pdb", frag) % (2**31)
+            if AllChem.EmbedMolecule(mol, params) != 0:
+                if AllChem.EmbedMolecule(mol, useRandomCoords=True, randomSeed=params.randomSeed) != 0:
+                    return None
+            mol = Chem.RemoveHs(mol)
+            return Chem.MolToPDBBlock(mol)
+        except Exception:  # pragma: no cover - defensive
+            return None
 
     def _mock_generate(self, target, num_molecules: int, th: str) -> list[dict]:
         rng = random.Random(_seed("molmim", th, str(num_molecules)))
@@ -215,6 +244,7 @@ class NimClient:
             "plddt": round(plddt, 1),
             "pocket_residues": list(getattr(target, "pocket_residues", []) or []),
             "model": "alphafold2",
+            "pdb": data.get("pdb") or data.get("structure"),
         }
 
     def _live_generate(self, target, num_molecules, reference_smiles) -> list[dict]:  # pragma: no cover

@@ -1628,6 +1628,18 @@
             "title": "Sdf",
             "description": "3-D docked pose as an SDF/MOL block"
           },
+          "receptor_pdb": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receptor Pdb",
+            "description": "Folded receptor structure (PDB) to overlay, when available"
+          },
           "model": {
             "type": "string",
             "title": "Model",

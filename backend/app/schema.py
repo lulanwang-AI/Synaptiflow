@@ -321,4 +321,7 @@ class PoseRequest(BaseModel):
 class PoseResult(BaseModel):
     smiles: str
     sdf: Optional[str] = Field(None, description="3-D docked pose as an SDF/MOL block")
+    receptor_pdb: Optional[str] = Field(
+        None, description="Folded receptor structure (PDB) to overlay, when available"
+    )
     model: str = "diffdock"

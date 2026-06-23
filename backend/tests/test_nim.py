@@ -56,6 +56,17 @@ def test_api_pose_endpoint():
         r = client.post("/structure/pose", json={"smiles": "CCO"}).json()
         assert r["model"] == "diffdock"
         assert r["sdf"] and "V2000" in r["sdf"]
+        # no target -> no receptor overlay
+        assert r["receptor_pdb"] is None
+
+
+def test_api_pose_with_target_includes_receptor():
+    client = TestClient(app)
+    with client:
+        t = client.get("/target").json()
+        r = client.post("/structure/pose", json={"smiles": "CCO", "target": t}).json()
+        assert r["sdf"] and "V2000" in r["sdf"]
+        assert r["receptor_pdb"] and "ATOM" in r["receptor_pdb"]  # folded receptor
 
 
 def test_default_generator_is_boltzmol():
