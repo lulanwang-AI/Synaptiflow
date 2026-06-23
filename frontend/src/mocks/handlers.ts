@@ -77,7 +77,12 @@ export const handlers = [
   ),
 
   ...route("/acquisition/run").map((u) =>
-    http.post(u, () => HttpResponse.json(db.acquisitionBatch())),
+    http.post(u, ({ request }) => {
+      const url = new URL(request.url);
+      const num = Number(url.searchParams.get("num_molecules")) || undefined;
+      const ref = url.searchParams.get("reference_smiles") || undefined;
+      return HttpResponse.json(db.acquisitionRun(num, ref));
+    }),
   ),
 
   ...route("/structure/fold").map((u) =>

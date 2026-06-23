@@ -96,14 +96,20 @@ export const api = {
 
   acquisitionBatch: () => request<AcquisitionBatch>("/acquisition/batch"),
 
-  acquisitionRun: (target: Target, numMolecules?: number) =>
-    request<AcquisitionBatch>(
-      `/acquisition/run${numMolecules ? `?num_molecules=${numMolecules}` : ""}`,
-      {
-        method: "POST",
-        body: JSON.stringify(target),
-      },
-    ),
+  acquisitionRun: (
+    target: Target,
+    numMolecules?: number,
+    referenceSmiles?: string,
+  ) => {
+    const qs = new URLSearchParams();
+    if (numMolecules) qs.set("num_molecules", String(numMolecules));
+    if (referenceSmiles) qs.set("reference_smiles", referenceSmiles);
+    const q = qs.toString();
+    return request<AcquisitionBatch>(`/acquisition/run${q ? `?${q}` : ""}`, {
+      method: "POST",
+      body: JSON.stringify(target),
+    });
+  },
 
   foldStructure: (target: Target) =>
     request<FoldResult>("/structure/fold", {

@@ -112,6 +112,21 @@ def test_api_acquisition_run_with_custom_target():
         assert q["depth"] == len(batch["candidates"])
 
 
+def test_api_acquisition_run_num_molecules_and_reference():
+    client = TestClient(app)
+    with client:
+        t = client.get("/target").json()
+        # num_molecules sizes the generation step
+        b6 = client.post("/acquisition/run?num_molecules=6", json=t).json()
+        assert b6["generated"] == 6
+        # reference_smiles is accepted (seeds MolMIM; ignored by default BoltzMol)
+        b8 = client.post(
+            "/acquisition/run?num_molecules=8&reference_smiles=Cc1ccccc1", json=t
+        ).json()
+        assert b8["generated"] == 8
+        assert b8["candidates"]
+
+
 def test_api_metrics_has_credit_and_calibration_fields():
     client = TestClient(app)
     with client:

@@ -67,6 +67,11 @@ export default function Discover() {
   const [results, setResults] = useState<AssayRecord[]>([]);
   const [calib, setCalib] = useState<number | null>(null);
   const [dockMap, setDockMap] = useState<Record<string, number>>({});
+  const [runStats, setRunStats] = useState<{
+    generated: number;
+    scored: number;
+    shortlisted: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const setStep = (k: StepKey, s: StepState) => setSteps((p) => ({ ...p, [k]: s }));
@@ -116,12 +121,17 @@ export default function Discover() {
       setError("Insert a protein/peptide sequence or a ligand SMILES to begin.");
       return;
     }
+    if (genMode === "optimize" && !ligand.trim()) {
+      setError("Optimize mode needs a reference ligand SMILES (or switch to De novo).");
+      return;
+    }
     setError(null);
     setSteps(initSteps());
     setHits([]);
     setResults([]);
     setCalib(null);
     setDockMap({});
+    setRunStats(null);
     setAccepted({});
     setPhase("processing");
     try {
@@ -143,7 +153,16 @@ export default function Discover() {
 
       // 2. Generate (MolMIM) → surrogate score + acquisition gate (server-side)
       setStep("generate", "running");
-      const batch = await api.acquisitionRun(target, numMol);
+      const batch = await api.acquisitionRun(
+        target,
+        numMol,
+        genMode === "optimize" ? ligand.trim() : undefined,
+      );
+      setRunStats({
+        generated: batch.generated,
+        scored: batch.scored,
+        shortlisted: batch.shortlisted,
+      });
       await delay(500);
       setStep("generate", "done");
 
@@ -218,6 +237,7 @@ export default function Discover() {
     setResults([]);
     setCalib(null);
     setDockMap({});
+    setRunStats(null);
     setAccepted({});
     setError(null);
   }
@@ -433,7 +453,11 @@ export default function Discover() {
               <div className="persona-hint">
                 <strong>Human-in-the-loop:</strong> review the proposed hits and
                 accept the ones to send for testing. {acceptedCount} of {hits.length} selected.
-                <div className="muted" style={{ marginTop: "0.2rem", fontSize: "0.78rem" }}>{configLabel()}</div>
+                <div className="muted" style={{ marginTop: "0.2rem", fontSize: "0.78rem" }}>
+                  {configLabel()}
+                  {runStats &&
+                    ` · generated ${runStats.generated} → scored ${runStats.scored} → shortlisted ${runStats.shortlisted}`}
+                </div>
               </div>
               <div className="grid-cards">
                 {hits.map((h) => {

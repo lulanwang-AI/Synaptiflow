@@ -136,15 +136,21 @@ def acquisition_batch() -> AcquisitionBatch:
 
 
 @router.post("/acquisition/run", response_model=AcquisitionBatch, tags=["acquisition"])
-def acquisition_run(target: Target, num_molecules: int = 12) -> AcquisitionBatch:
+def acquisition_run(
+    target: Target,
+    num_molecules: int = 12,
+    reference_smiles: str | None = None,
+) -> AcquisitionBatch:
     """Generate hits against a user-supplied target (protein/peptide pocket).
 
     Drives the same pipeline as /acquisition/batch but with the inserted target,
     so the proposed hits respond to the input. `num_molecules` sizes the
-    generation step. The result is cached for approve.
+    generation step; `reference_smiles` seeds MolMIM optimization when
+    GENERATOR_ENGINE=molmim. The result is cached for approve.
     """
     n = max(1, min(int(num_molecules), 40))
-    batch = acquisition.build_batch(target, num_molecules=n)
+    ref = reference_smiles.strip() if reference_smiles and reference_smiles.strip() else None
+    batch = acquisition.build_batch(target, num_molecules=n, reference_smiles=ref)
     _LAST_BATCH["batch"] = batch
     return batch
 

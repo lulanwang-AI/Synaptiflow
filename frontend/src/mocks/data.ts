@@ -354,6 +354,7 @@ export interface MockState {
   creditSpentUsd: number;
   calibrationErrors: number[];
   queue: QueueItem[];
+  lastBatch: AcquisitionBatch | null;
 }
 
 let state: MockState;
@@ -378,6 +379,7 @@ export function resetState(): number {
     creditSpentUsd: 4.8,
     calibrationErrors: [],
     queue: [],
+    lastBatch: null,
   };
   return state.records.length;
 }
@@ -457,13 +459,51 @@ const CANDIDATES: AcquisitionBatch["candidates"] = [
 ];
 
 export function acquisitionBatch(): AcquisitionBatch {
-  return {
+  const batch: AcquisitionBatch = {
     target_name: "KINASE_X",
     generated: 240,
     scored: 240,
     shortlisted: CANDIDATES.length,
     candidates: JSON.parse(JSON.stringify(CANDIDATES)),
   };
+  getState().lastBatch = batch;
+  return batch;
+}
+
+// Discover's POST /acquisition/run: num_molecules sizes the generation count,
+// and a reference ligand (MolMIM optimize) is retained as the top seed hit.
+export function acquisitionRun(
+  numMolecules?: number,
+  referenceSmiles?: string | null,
+): AcquisitionBatch {
+  const n = numMolecules && numMolecules > 0 ? numMolecules : 12;
+  const base = JSON.parse(JSON.stringify(CANDIDATES)) as AcquisitionBatch["candidates"];
+  if (referenceSmiles && referenceSmiles.trim()) {
+    const smi = referenceSmiles.trim();
+    base.unshift({
+      smiles: smi,
+      inchikey: fakeInchikey(smi),
+      mu: 8.1,
+      sigma: 0.25,
+      boltz_affinity: -2.4,
+      adme_flags: [],
+      ood_flag: false,
+      tag: "exploit",
+      rationale:
+        "MolMIM optimization seeded from the reference ligand; closest analog retained.",
+      design_run_id: "molmim-optimize",
+    });
+  }
+  const candidates = base.slice(0, 5);
+  const batch: AcquisitionBatch = {
+    target_name: "KINASE_X",
+    generated: n,
+    scored: n,
+    shortlisted: candidates.length,
+    candidates,
+  };
+  getState().lastBatch = batch;
+  return batch;
 }
 
 export const TARGET: Target = {
@@ -687,7 +727,8 @@ export function approveBatch() {
   s.approvedBatches += 1;
   s.creditSpentUsd += 12.5; // shortlist Boltz screen/adme spend
   const now = Date.now() / 1000;
-  for (const c of CANDIDATES) {
+  const batchCands = s.lastBatch?.candidates ?? CANDIDATES;
+  for (const c of batchCands) {
     if (s.queue.some((q) => q.inchikey === c.inchikey)) continue;
     s.queue.push({
       smiles: c.smiles,
