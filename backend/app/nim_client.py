@@ -129,6 +129,19 @@ class NimClient:
                 self._cache[("dock", th, s)] = r
         return [self._cache[k] for k in keys]
 
+    def pose(self, target, smiles: str) -> dict:
+        """3-D docked pose for one ligand (DiffDock). Returns {smiles, sdf, model}.
+
+        Mock generates a real RDKit 3-D conformer (the ligand pose); the live
+        path returns the DiffDock-docked pose.
+        """
+        key = ("pose", smiles)
+        if key not in self._cache:
+            self._cache[key] = (
+                self._mock_pose(smiles) if self.mock else self._live_pose(target, smiles)
+            )
+        return self._cache[key]
+
     # ------------------------------------------------------------------ #
     # Deterministic mock implementations
     # ------------------------------------------------------------------ #
@@ -154,6 +167,28 @@ class NimClient:
             conf = round(0.40 + rng.random() * 0.55, 3)  # 0.40–0.95
             out.append({"smiles": s, "dock_confidence": conf, "model": "diffdock"})
         return out
+
+    def _mock_pose(self, smiles: str) -> dict:
+        """Real 3-D ligand conformer via RDKit (deterministic), as an SDF molblock."""
+        try:
+            from rdkit import Chem
+            from rdkit.Chem import AllChem
+        except Exception:  # pragma: no cover - rdkit is a backend dependency
+            return {"smiles": smiles, "sdf": None, "model": "diffdock"}
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            return {"smiles": smiles, "sdf": None, "model": "diffdock"}
+        mol = Chem.AddHs(mol)
+        params = AllChem.ETKDGv3()
+        params.randomSeed = _seed("pose", smiles) % (2**31)
+        if AllChem.EmbedMolecule(mol, params) != 0:
+            if AllChem.EmbedMolecule(mol, useRandomCoords=True, randomSeed=params.randomSeed) != 0:
+                return {"smiles": smiles, "sdf": None, "model": "diffdock"}
+        try:
+            AllChem.MMFFOptimizeMolecule(mol)
+        except Exception:  # pragma: no cover - optimizer can fail for exotic atoms
+            pass
+        return {"smiles": smiles, "sdf": Chem.MolToMolBlock(mol), "model": "diffdock"}
 
     # ------------------------------------------------------------------ #
     # Live implementations (guarded; confirm schemas at build.nvidia.com)
@@ -213,6 +248,18 @@ class NimClient:
                     conf = conf[0] if conf else 0.0
                 out.append({"smiles": s, "dock_confidence": round(float(conf), 3), "model": "diffdock"})
         return out
+
+    def _live_pose(self, target, smiles: str) -> dict:  # pragma: no cover
+        seq = getattr(target, "protein_sequence", "") if target else ""
+        with self._client() as c:
+            resp = c.post(
+                self.urls["diffdock"],
+                json={"protein_sequence": seq, "ligand": smiles, "return_pose": True},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        sdf = data.get("pose_sdf") or data.get("sdf")
+        return {"smiles": smiles, "sdf": sdf, "model": "diffdock"}
 
 
 # Process-wide singleton so the cache persists across requests.

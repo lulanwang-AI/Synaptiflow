@@ -9,7 +9,7 @@
 // demo; the inserted sequence + pocket genuinely drive generation via
 // POST /acquisition/run.
 
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { AcquisitionCandidate, AssayRecord, Target } from "../api/types";
@@ -17,6 +17,8 @@ import { useAsync } from "../lib/useAsync";
 import StructureCanvas from "../components/StructureCanvas";
 import { fmtNum, fmtMolar } from "../lib/format";
 import { PersonaHint } from "../lib/persona";
+
+const PoseViewer = lazy(() => import("../components/PoseViewer"));
 
 type StepState = "idle" | "running" | "done";
 const STEP_DEFS = [
@@ -73,6 +75,7 @@ export default function Discover() {
     shortlisted: number;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [poseHit, setPoseHit] = useState<AcquisitionCandidate | null>(null);
 
   const setStep = (k: StepKey, s: StepState) => setSteps((p) => ({ ...p, [k]: s }));
 
@@ -521,6 +524,13 @@ export default function Discover() {
                           <span className="muted">Rationale: </span>
                           {h.rationale}
                         </p>
+                        <button
+                          className="btn"
+                          style={{ marginTop: "0.5rem", fontSize: "0.78rem", padding: "0.3rem 0.7rem" }}
+                          onClick={() => setPoseHit(h)}
+                        >
+                          🧬 View 3D pose
+                        </button>
                       </div>
                     </div>
                   );
@@ -601,6 +611,17 @@ export default function Discover() {
           )}
         </div>
       </div>
+
+      {poseHit && (
+        <Suspense fallback={null}>
+          <PoseViewer
+            smiles={poseHit.smiles}
+            confidence={dockMap[poseHit.smiles] ?? dockConf(poseHit.boltz_affinity)}
+            pocket={folded?.pocket ?? parsePocket(pocketStr)}
+            onClose={() => setPoseHit(null)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

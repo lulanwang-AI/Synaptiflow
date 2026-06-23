@@ -311,3 +311,14 @@ class DockResult(BaseModel):
 
 class DockResponse(BaseModel):
     results: list[DockResult] = Field(default_factory=list)
+
+
+class PoseRequest(BaseModel):
+    smiles: str
+    target: Optional[Target] = None
+
+
+class PoseResult(BaseModel):
+    smiles: str
+    sdf: Optional[str] = Field(None, description="3-D docked pose as an SDF/MOL block")
+    model: str = "diffdock"

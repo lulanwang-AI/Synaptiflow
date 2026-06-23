@@ -227,3 +227,9 @@ export interface DockResult {
 export interface DockResponse {
   results: DockResult[];
 }
+
+export interface PoseResult {
+  smiles: string;
+  sdf?: string | null;
+  model: string;
+}

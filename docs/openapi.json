@@ -516,6 +516,47 @@
         }
       }
     },
+    "/structure/pose": {
+      "post": {
+        "tags": [
+          "structure"
+        ],
+        "summary": "Structure Pose",
+        "operationId": "structure_pose_structure_pose_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PoseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoseResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/metrics": {
       "get": {
         "tags": [
@@ -1545,6 +1586,59 @@
         },
         "type": "object",
         "title": "Metrics"
+      },
+      "PoseRequest": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Target"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles"
+        ],
+        "title": "PoseRequest"
+      },
+      "PoseResult": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "sdf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sdf",
+            "description": "3-D docked pose as an SDF/MOL block"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "diffdock"
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles"
+        ],
+        "title": "PoseResult"
       },
       "Prediction": {
         "properties": {

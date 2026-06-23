@@ -13,6 +13,7 @@ import type {
   IngestResponse,
   LoopSummary,
   Metrics,
+  PoseResult,
   QueueView,
   RecordPatch,
   ReplayRequest,
@@ -121,6 +122,12 @@ export const api = {
     request<DockResponse>("/dock", {
       method: "POST",
       body: JSON.stringify({ target, smiles }),
+    }),
+
+  pose: (smiles: string, target?: Target) =>
+    request<PoseResult>("/structure/pose", {
+      method: "POST",
+      body: JSON.stringify({ smiles, target: target ?? null }),
     }),
 
   acquisitionApprove: () =>

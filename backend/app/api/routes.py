@@ -20,6 +20,8 @@ from ..schema import (
     DockResult,
     FoldResult,
     IngestResponse,
+    PoseRequest,
+    PoseResult,
     LoopSummary,
     Metrics,
     QueueView,
@@ -181,6 +183,12 @@ def structure_fold(target: Target) -> FoldResult:
 def dock(req: DockRequest) -> DockResponse:
     results = get_nim_client().dock(req.target, req.smiles)
     return DockResponse(results=[DockResult(**x) for x in results])
+
+
+@router.post("/structure/pose", response_model=PoseResult, tags=["structure"])
+def structure_pose(req: PoseRequest) -> PoseResult:
+    r = get_nim_client().pose(req.target, req.smiles)
+    return PoseResult(smiles=r["smiles"], sdf=r.get("sdf"), model=r["model"])
 
 
 # --------------------------------------------------------------------------- #

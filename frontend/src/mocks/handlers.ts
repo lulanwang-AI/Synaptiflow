@@ -99,6 +99,14 @@ export const handlers = [
     }),
   ),
 
+  ...route("/structure/pose").map((u) =>
+    http.post(u, async ({ request }) => {
+      const body = (await request.json()) as { smiles?: string };
+      // Offline mock has no chemistry toolkit; the viewer falls back to 2-D.
+      return HttpResponse.json({ smiles: body.smiles ?? "", sdf: null, model: "diffdock" });
+    }),
+  ),
+
   ...route("/acquisition/approve").map((u) =>
     http.post(u, () => HttpResponse.json(db.approveBatch())),
   ),

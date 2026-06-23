@@ -40,6 +40,24 @@ def test_nim_generate_mock_smiles():
     assert all("smiles" in m for m in mols)
 
 
+def test_nim_pose_mock_generates_3d_conformer():
+    c = get_nim_client()
+    t = load_target()
+    r = c.pose(t, "c1ccccc1")
+    assert r["model"] == "diffdock"
+    assert r["sdf"] is not None and "V2000" in r["sdf"]  # a 3-D mol block
+    bad = c.pose(t, "not_a_valid_smiles_%%%")
+    assert bad["sdf"] is None
+
+
+def test_api_pose_endpoint():
+    client = TestClient(app)
+    with client:
+        r = client.post("/structure/pose", json={"smiles": "CCO"}).json()
+        assert r["model"] == "diffdock"
+        assert r["sdf"] and "V2000" in r["sdf"]
+
+
 def test_default_generator_is_boltzmol():
     # No GENERATOR_ENGINE set -> BoltzMol design path (design_run_id like design-*)
     os.environ.pop("GENERATOR_ENGINE", None)
