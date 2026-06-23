@@ -187,14 +187,11 @@ def dock(req: DockRequest) -> DockResponse:
 
 @router.post("/structure/pose", response_model=PoseResult, tags=["structure"])
 def structure_pose(req: PoseRequest) -> PoseResult:
-    client = get_nim_client()
-    r = client.pose(req.target, req.smiles)
-    # Overlay the folded receptor structure when a target is supplied.
-    receptor_pdb = client.fold(req.target).get("pdb") if req.target is not None else None
+    r = get_nim_client().pose(req.target, req.smiles)
     return PoseResult(
         smiles=r["smiles"],
         sdf=r.get("sdf"),
-        receptor_pdb=receptor_pdb,
+        receptor_pdb=r.get("receptor_pdb"),
         model=r["model"],
     )
 

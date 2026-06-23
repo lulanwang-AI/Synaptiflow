@@ -130,17 +130,48 @@ class NimClient:
         return [self._cache[k] for k in keys]
 
     def pose(self, target, smiles: str) -> dict:
-        """3-D docked pose for one ligand (DiffDock). Returns {smiles, sdf, model}.
+        """3-D docked pose for one ligand (DiffDock).
 
-        Mock generates a real RDKit 3-D conformer (the ligand pose); the live
-        path returns the DiffDock-docked pose.
+        Returns {smiles, sdf, receptor_pdb, model}. Mock generates a real RDKit
+        3-D conformer and, when a folded receptor is available, centers the
+        ligand inside the receptor (a live DiffDock pose is already in-frame, so
+        it is left untouched). The live path returns the DiffDock-docked pose.
         """
-        key = ("pose", smiles)
+        th = _target_hash(target) if target is not None else "none"
+        key = ("pose", th, smiles)
         if key not in self._cache:
-            self._cache[key] = (
-                self._mock_pose(smiles) if self.mock else self._live_pose(target, smiles)
-            )
+            result = self._mock_pose(smiles) if self.mock else self._live_pose(target, smiles)
+            receptor = self.fold(target).get("pdb") if target is not None else None
+            result["receptor_pdb"] = receptor
+            if self.mock and result.get("sdf") and receptor:
+                result["sdf"] = self._center_ligand_in_receptor(result["sdf"], receptor)
+            self._cache[key] = result
         return self._cache[key]
+
+    @staticmethod
+    def _center_ligand_in_receptor(sdf: str, receptor_pdb: str) -> str:
+        """Translate the ligand conformer so its centroid sits at the receptor's
+        centroid (mock only) — so it renders inside the cartoon rather than at
+        the origin. Returns the original SDF unchanged on any failure."""
+        try:
+            import numpy as np
+            from rdkit import Chem
+            from rdkit.Geometry import Point3D
+
+            lig = Chem.MolFromMolBlock(sdf, sanitize=False, removeHs=False)
+            rec = Chem.MolFromPDBBlock(receptor_pdb, sanitize=False, removeHs=False)
+            if lig is None or rec is None or not lig.GetNumConformers() or not rec.GetNumConformers():
+                return sdf
+            lc, rc = lig.GetConformer(), rec.GetConformer()
+            lpos = np.array([list(lc.GetAtomPosition(i)) for i in range(lig.GetNumAtoms())])
+            rpos = np.array([list(rc.GetAtomPosition(i)) for i in range(rec.GetNumAtoms())])
+            shift = rpos.mean(axis=0) - lpos.mean(axis=0)
+            for i in range(lig.GetNumAtoms()):
+                p = lc.GetAtomPosition(i)
+                lc.SetAtomPosition(i, Point3D(p.x + shift[0], p.y + shift[1], p.z + shift[2]))
+            return Chem.MolToMolBlock(lig)
+        except Exception:  # pragma: no cover - defensive
+            return sdf
 
     # ------------------------------------------------------------------ #
     # Deterministic mock implementations
