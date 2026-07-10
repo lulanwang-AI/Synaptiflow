@@ -1,0 +1,28 @@
+# Replit configuration — single-origin full-stack deploy.
+# One Uvicorn process serves the FastAPI API and the built React SPA on $PORT.
+# Mock mode is the default (no API key, spends nothing).
+
+modules = ["python-3.11", "nodejs-20"]
+entrypoint = "backend/app/main.py"
+run = "bash replit_run.sh"
+
+hidden = [".venv", "frontend/dist", "frontend/node_modules", "**/__pycache__"]
+
+[env]
+BOLTZ_MOCK = "1"
+NIM_MOCK = "1"
+GENERATOR_ENGINE = "boltz"
+PYTHONUNBUFFERED = "1"
+
+[deployment]
+deploymentTarget = "autoscale"
+build = ["bash", "replit_build.sh"]
+run = ["bash", "replit_run.sh"]
+
+# Dev workspace port mapping (deployments use $PORT automatically).
+[[ports]]
+localPort = 8000
+externalPort = 80
+
+[nix]
+channel = "stable-24_11"

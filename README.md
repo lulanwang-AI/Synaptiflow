@@ -67,6 +67,22 @@ The credit guard refuses any call that would push cumulative spend past
 `small_molecule.design/screen/adme` signatures at api.boltz.bio/docs and pin the
 version before relying on the live path (see `backend/app/boltz_client.py`).
 
+### Deploy on Replit (one service, single origin)
+Import this repo into Replit and press **Run** (or **Deploy → Autoscale**). The
+included `.replit` builds the SPA and installs the backend, then serves **both**
+from one Uvicorn process on `$PORT` — no CORS, no second port, mock mode by
+default (no key, spends nothing):
+- `replit_build.sh` — `VITE_API_BASE="" npm run build` (so the UI calls the API
+  on its own origin), then installs `backend/` into `.venv`.
+- `replit_run.sh` — `uvicorn app.main:app --host 0.0.0.0 --port $PORT`; the
+  backend serves the built `frontend/dist` for any non-API path (SPA fallback).
+  It self-heals (builds/install on first Run if a step was skipped).
+
+The single-origin static serving in `backend/app/main.py` is **additive** —
+active only when `frontend/dist` exists, excluded from the OpenAPI schema, and a
+no-op in tests/CI. To flip a Replit deployment to live Boltz, set `BOLTZ_MOCK=0`
++ `BOLTZ_API_KEY` (and `BOLTZ_MAX_SPEND_USD`) in the deployment's Secrets.
+
 ---
 
 ## Environment variables
@@ -75,7 +91,7 @@ version before relying on the live path (see `backend/app/boltz_client.py`).
 | `BOLTZ_MOCK` | `1` (demo) | `1` = deterministic canned outputs, no network, no spend |
 | `BOLTZ_API_KEY` | — | required only for live Boltz calls |
 | `BOLTZ_MAX_SPEND_USD` | `50` | hard cap on cumulative live spend |
-| `VITE_API_BASE` | `http://localhost:8000` | frontend → backend base URL |
+| `VITE_API_BASE` | `http://localhost:8000` | frontend → backend base URL (build-time). Set to **empty** for a single-origin deploy (Replit) so the UI calls the API on its own origin |
 
 Mock mode requires **no key** and spends **nothing**.
 
