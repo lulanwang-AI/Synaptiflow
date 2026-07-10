@@ -60,7 +60,7 @@ function Stage({
             cx={x + w}
             cy={y}
             r={13}
-            fill={highlight ? "#cf222e" : "#0969da"}
+            fill={highlight ? "#cf222e" : "#ff6a00"}
             stroke="#fff"
             strokeWidth={2}
           />
@@ -99,7 +99,7 @@ function Arrow({
       y1={y1}
       x2={x2}
       y2={y2}
-      stroke={feed ? "#6639ba" : "#8b949e"}
+      stroke={feed ? "#ff6a00" : "#8b949e"}
       strokeWidth={2}
       strokeDasharray={feed ? "6 4" : undefined}
       markerEnd={feed ? "url(#arrow-feed)" : "url(#arrow)"}
@@ -163,12 +163,12 @@ export default function LoopOverview() {
               markerHeight="7"
               orient="auto-start-reverse"
             >
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#6639ba" />
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#ff6a00" />
             </marker>
           </defs>
 
           {/* loop labels */}
-          <text x={250} y={28} textAnchor="middle" fontSize="12" fill="#6639ba" fontWeight="700">
+          <text x={250} y={28} textAnchor="middle" fontSize="12" fill="#ff6a00" fontWeight="700">
             INNER LOOP — compute (fast, free, many/round)
           </text>
           <text x={250} y={462} textAnchor="middle" fontSize="12" fill="#1a7f37" fontWeight="700">
@@ -192,8 +192,8 @@ export default function LoopOverview() {
           </text>
 
           {/* inner loop (top) */}
-          <Stage x={40} y={60} w={170} h={60} title="Generator" count={s.generated} fill="#f3edff" />
-          <Stage x={250} y={60} w={170} h={60} title="Cheap surrogate" count={s.scored} fill="#f3edff" />
+          <Stage x={40} y={60} w={170} h={60} title="Generator" count={s.generated} fill="#fff3e9" />
+          <Stage x={250} y={60} w={170} h={60} title="Cheap surrogate" count={s.scored} fill="#fff3e9" />
 
           {/* acquisition gate — the hinge between loops */}
           <Stage

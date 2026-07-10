@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { useAsync } from "../lib/useAsync";
-import type { AcquisitionBatch, AcquisitionCandidate } from "../api/types";
+import type { AcquisitionBatch, AcquisitionCandidate, Target } from "../api/types";
 import StructureCanvas from "../components/StructureCanvas";
 import { fmtNum } from "../lib/format";
 import { PersonaHint } from "../lib/persona";
 
-function CandidateCard({ c }: { c: AcquisitionCandidate }) {
+const PoseViewer = lazy(() => import("../components/PoseViewer"));
+
+function CandidateCard({ c, onView3D }: { c: AcquisitionCandidate; onView3D: () => void }) {
   return (
     <div
       className="panel"
@@ -54,6 +56,13 @@ function CandidateCard({ c }: { c: AcquisitionCandidate }) {
         <span className="muted">Rationale: </span>
         {c.rationale}
       </p>
+      <button
+        className="btn"
+        style={{ marginTop: "0.6rem", fontSize: "0.78rem", padding: "0.3rem 0.7rem" }}
+        onClick={onView3D}
+      >
+        🧬 View 3D pose
+      </button>
     </div>
   );
 }
@@ -62,9 +71,11 @@ export default function Acquisition() {
   const { data, loading, error } = useAsync<AcquisitionBatch>(() =>
     api.acquisitionBatch(),
   );
+  const { data: target } = useAsync<Target>(() => api.target());
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [actError, setActError] = useState<string | null>(null);
+  const [poseHit, setPoseHit] = useState<AcquisitionCandidate | null>(null);
 
   async function approve() {
     setBusy("approve");
@@ -151,9 +162,20 @@ export default function Acquisition() {
 
       <div className="grid-cards">
         {data?.candidates.map((c) => (
-          <CandidateCard key={c.inchikey} c={c} />
+          <CandidateCard key={c.inchikey} c={c} onView3D={() => setPoseHit(c)} />
         ))}
       </div>
+
+      {poseHit && (
+        <Suspense fallback={null}>
+          <PoseViewer
+            smiles={poseHit.smiles}
+            target={target ?? null}
+            pocket={target?.pocket_residues}
+            onClose={() => setPoseHit(null)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

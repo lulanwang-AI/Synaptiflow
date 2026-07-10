@@ -268,3 +268,105 @@ class ReplayResponse(BaseModel):
 class ResetResponse(BaseModel):
     ok: bool
     records: int
+
+
+# --------------------------------------------------------------------------- #
+# Synthesis queue (outer loop: selected batch -> synthesis -> assay)
+# --------------------------------------------------------------------------- #
+class QueueItem(BaseModel):
+    smiles: str
+    inchikey: str
+    target_construct: Optional[str] = None
+    boltz_affinity_loguM: Optional[float] = Field(
+        None, description="Cached Boltz prediction (log-µM); the value replay calibrates against"
+    )
+    design_run_id: Optional[str] = None
+    selected_at: Optional[float] = Field(None, description="Unix time the candidate was approved")
+
+
+class QueueView(BaseModel):
+    depth: int = 0
+    items: list[QueueItem] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------- #
+# NIM structure tier (AlphaFold2 fold + DiffDock dock)
+# --------------------------------------------------------------------------- #
+class FoldResult(BaseModel):
+    plddt: float = Field(..., description="Mean predicted structure confidence (pLDDT)")
+    pocket_residues: list[int] = Field(default_factory=list)
+    model: str = "alphafold2"
+
+
+class DockRequest(BaseModel):
+    target: Target
+    smiles: list[str] = Field(default_factory=list)
+
+
+class DockResult(BaseModel):
+    smiles: str
+    dock_confidence: float = Field(..., description="DiffDock pose confidence (0–1)")
+    model: str = "diffdock"
+
+
+class DockResponse(BaseModel):
+    results: list[DockResult] = Field(default_factory=list)
+
+
+class PoseRequest(BaseModel):
+    smiles: str
+    target: Optional[Target] = None
+
+
+class PoseResult(BaseModel):
+    smiles: str
+    sdf: Optional[str] = Field(None, description="3-D docked pose as an SDF/MOL block")
+    receptor_pdb: Optional[str] = Field(
+        None, description="Folded receptor structure (PDB) to overlay, when available"
+    )
+    model: str = "diffdock"
+
+
+# --------------------------------------------------------------------------- #
+# UHTS screening campaign (primary screen → confirmation → characterization)
+# --------------------------------------------------------------------------- #
+class ScreenRequest(BaseModel):
+    smiles: list[str] = Field(default_factory=list)
+    target: Optional[Target] = None
+
+
+class PrimaryHit(BaseModel):
+    smiles: str
+    inchikey: str
+    pct_inhibition: float
+    is_hit: bool
+
+
+class PrimaryResult(BaseModel):
+    screened: int = 0
+    plate_wells: int = 1536
+    z_prime: float = 0.0
+    hit_threshold: float = 40.0
+    hits: int = 0
+    hit_rate: float = 0.0
+    results: list[PrimaryHit] = Field(default_factory=list)
+
+
+class ConfirmHit(BaseModel):
+    smiles: str
+    inchikey: str
+    ic50_M: Optional[float] = None
+    ec50_M: Optional[float] = None
+    kd_M: Optional[float] = None
+    ki_M: Optional[float] = None
+    predicted_loguM: Optional[float] = None
+    measured_loguM: Optional[float] = None
+    delta_loguM: Optional[float] = Field(None, description="Predicted − measured (log-µM)")
+    qc_flag: str = "pass"
+    confirmed: bool = True
+
+
+class ConfirmResult(BaseModel):
+    confirmed: int = 0
+    results: list[ConfirmHit] = Field(default_factory=list)
+    calibration_error: Optional[float] = None

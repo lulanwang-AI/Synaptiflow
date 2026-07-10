@@ -41,13 +41,26 @@ def build_batch(
     num_molecules: int = 12,
     shortlist_m: int = 6,
     final_k: int = 4,
+    reference_smiles: Optional[str] = None,
 ) -> AcquisitionBatch:
     store = get_store()
     surrogate = train_from_store(store)
 
     # ---- generate ---- #
-    candidates = design(target, num_molecules)
+    candidates = design(target, num_molecules, reference_smiles)
     store.set_counter("generated", len(candidates))
+
+    # No candidates survived (e.g., a live generator returned only invalid
+    # SMILES) — return an empty batch rather than scoring/ranking nothing.
+    if not candidates:
+        store.set_counter("scored", 0)
+        return AcquisitionBatch(
+            target_name=getattr(target, "name", None),
+            generated=0,
+            scored=0,
+            shortlisted=0,
+            candidates=[],
+        )
 
     # ---- cheap surrogate scores every candidate (free) ---- #
     scored = []

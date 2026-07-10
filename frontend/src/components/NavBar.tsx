@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   PERSONA_LABEL,
   PERSONA_ROUTES,
@@ -8,16 +8,17 @@ import {
 import { isMockActive, setMockToggle } from "../mocks/enable";
 import { api } from "../api/client";
 
-const LINKS: { to: string; label: string }[] = [
-  { to: "/", label: "Loop overview" },
-  { to: "/records", label: "Records" },
-  { to: "/acquisition", label: "Next batch" },
-  { to: "/metrics", label: "Metrics" },
+// Only the most important steps live in the top bar; everything else is in the
+// hideable sidebar.
+const TOP_LINKS: { to: string; label: string }[] = [
+  { to: "/", label: "Overview" },
+  { to: "/discover", label: "Discover" },
+  { to: "/screen", label: "Screen" },
+  { to: "/workflow", label: "Workflow" },
 ];
 
-export default function NavBar() {
+export default function NavBar({ onToggleSidebar }: { onToggleSidebar: () => void }) {
   const { persona, setPersona } = usePersona();
-  const location = useLocation();
   const mock = isMockActive();
   const personaRoutes = PERSONA_ROUTES[persona];
 
@@ -32,7 +33,6 @@ export default function NavBar() {
       alert(`Reset failed: ${e instanceof Error ? e.message : String(e)}`);
       return;
     }
-    // simplest reliable refresh of all views after reset
     window.location.reload();
   }
 
@@ -44,9 +44,20 @@ export default function NavBar() {
   return (
     <nav className="nav">
       <div className="nav-inner">
-        <span className="nav-brand">Closed-Loop Discovery</span>
+        <button
+          className="hamburger"
+          onClick={onToggleSidebar}
+          title="Toggle menu"
+          aria-label="Toggle menu"
+        >
+          ☰
+        </button>
+        <span className="nav-brand">
+          <span className="brand-mark" aria-hidden="true" />
+          SynaptiFlow
+        </span>
         <div className="nav-links">
-          {LINKS.map((l) => (
+          {TOP_LINKS.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}
@@ -64,10 +75,6 @@ export default function NavBar() {
               {l.label}
             </NavLink>
           ))}
-          {/* compound route has no top-level link; highlight when active */}
-          {location.pathname.startsWith("/compound") && (
-            <span className="nav-link active">Compound</span>
-          )}
         </div>
         <div className="nav-spacer" />
         <div className="nav-controls">

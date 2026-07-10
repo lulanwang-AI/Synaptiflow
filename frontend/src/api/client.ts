@@ -8,9 +8,15 @@ import type {
   AssayRecord,
   AssayRecordIn,
   CompoundView,
+  ConfirmResult,
+  DockResponse,
+  FoldResult,
   IngestResponse,
   LoopSummary,
   Metrics,
+  PoseResult,
+  PrimaryResult,
+  QueueView,
   RecordPatch,
   ReplayRequest,
   ReplayResponse,
@@ -66,6 +72,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   loopSummary: () => request<LoopSummary>("/loop/summary"),
 
+  loopQueue: () => request<QueueView>("/loop/queue"),
+
   listRecords: (status?: string) =>
     request<AssayRecord[]>(
       `/records${status ? `?status=${encodeURIComponent(status)}` : ""}`,
@@ -90,6 +98,51 @@ export const api = {
     request<CompoundView>(`/compound/${encodeURIComponent(inchikey)}`),
 
   acquisitionBatch: () => request<AcquisitionBatch>("/acquisition/batch"),
+
+  acquisitionRun: (
+    target: Target,
+    numMolecules?: number,
+    referenceSmiles?: string,
+  ) => {
+    const qs = new URLSearchParams();
+    if (numMolecules) qs.set("num_molecules", String(numMolecules));
+    if (referenceSmiles) qs.set("reference_smiles", referenceSmiles);
+    const q = qs.toString();
+    return request<AcquisitionBatch>(`/acquisition/run${q ? `?${q}` : ""}`, {
+      method: "POST",
+      body: JSON.stringify(target),
+    });
+  },
+
+  foldStructure: (target: Target) =>
+    request<FoldResult>("/structure/fold", {
+      method: "POST",
+      body: JSON.stringify(target),
+    }),
+
+  dock: (target: Target, smiles: string[]) =>
+    request<DockResponse>("/dock", {
+      method: "POST",
+      body: JSON.stringify({ target, smiles }),
+    }),
+
+  pose: (smiles: string, target?: Target) =>
+    request<PoseResult>("/structure/pose", {
+      method: "POST",
+      body: JSON.stringify({ smiles, target: target ?? null }),
+    }),
+
+  screenPrimary: (smiles: string[], target?: Target) =>
+    request<PrimaryResult>("/screen/primary", {
+      method: "POST",
+      body: JSON.stringify({ smiles, target: target ?? null }),
+    }),
+
+  screenConfirm: (smiles: string[], target?: Target) =>
+    request<ConfirmResult>("/screen/confirm", {
+      method: "POST",
+      body: JSON.stringify({ smiles, target: target ?? null }),
+    }),
 
   acquisitionApprove: () =>
     request<LoopSummary>("/acquisition/approve", { method: "POST" }),

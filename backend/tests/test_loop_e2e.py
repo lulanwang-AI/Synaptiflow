@@ -69,6 +69,64 @@ def test_api_acquisition_has_boltz_fields():
             assert key in c
 
 
+def test_api_loop_queue_fills_on_approve_and_drains_on_replay():
+    client = TestClient(app)
+    with client:
+        # empty to start
+        q0 = client.get("/loop/queue").json()
+        assert q0["depth"] == 0
+        assert q0["items"] == []
+
+        # build + approve a batch -> the synthesis queue fills
+        batch = client.get("/acquisition/batch").json()
+        client.post("/acquisition/approve")
+        q1 = client.get("/loop/queue").json()
+        assert q1["depth"] == len(batch["candidates"])
+        item = q1["items"][0]
+        for key in ("smiles", "inchikey", "target_construct", "boltz_affinity_loguM", "design_run_id"):
+            assert key in item
+
+        # replay -> queue drains back to empty
+        client.post("/loop/replay", json={})
+        q2 = client.get("/loop/queue").json()
+        assert q2["depth"] == 0
+
+
+def test_api_acquisition_run_with_custom_target():
+    client = TestClient(app)
+    with client:
+        target = {
+            "name": "CUSTOM",
+            "protein_sequence": "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKR",
+            "chain_ids": ["A"],
+            "pocket_residues": [10, 12, 30],
+        }
+        batch = client.post("/acquisition/run", json=target).json()
+        assert batch["candidates"]
+        c = batch["candidates"][0]
+        for key in ("smiles", "inchikey", "mu", "sigma", "boltz_affinity", "tag", "rationale"):
+            assert key in c
+        # the cached batch can then be approved + replayed (human-in-the-loop)
+        client.post("/acquisition/approve")
+        q = client.get("/loop/queue").json()
+        assert q["depth"] == len(batch["candidates"])
+
+
+def test_api_acquisition_run_num_molecules_and_reference():
+    client = TestClient(app)
+    with client:
+        t = client.get("/target").json()
+        # num_molecules sizes the generation step
+        b6 = client.post("/acquisition/run?num_molecules=6", json=t).json()
+        assert b6["generated"] == 6
+        # reference_smiles is accepted (seeds MolMIM; ignored by default BoltzMol)
+        b8 = client.post(
+            "/acquisition/run?num_molecules=8&reference_smiles=Cc1ccccc1", json=t
+        ).json()
+        assert b8["generated"] == 8
+        assert b8["candidates"]
+
+
 def test_api_metrics_has_credit_and_calibration_fields():
     client = TestClient(app)
     with client:

@@ -29,13 +29,29 @@ This repo is the Closed-Loop Discovery MVP. Read `docs/context.md` and
   must fully work with `BOLTZ_API_KEY` unset.
 
 ## Status policy (the encoded "model-ready" definition; spec §1, §8)
-- `blocked`: missing identity | target_construct | unit | (IC50 without the
-  conditions to derive Ki) | `qc_flag == "fail"`.
+- `blocked`: missing identity | target_construct | unit (a `%`-family unit for
+  primary readouts) | (IC50 without the conditions to derive Ki) |
+  unrecognized readout | `qc_flag == "fail"`.
 - `normalizable`: would be model-ready but carries a soft QC warning
   (`aggregator` / `fluorescence_interference`) — usable with caution.
 - `model_ready`: identity resolved, (assay_type, readout, construct, unit)
-  present, qc pass, and readout is condition-light (Kd/Ki) OR an IC50 normalized
-  to Ki via Cheng–Prusoff using present conditions.
+  present, qc pass, and the readout is one of:
+  - condition-light affinity (Kd/Ki), pooled in `Ki` space; OR
+  - an IC50 normalized to Ki via Cheng–Prusoff using present conditions; OR
+  - a **primary single-concentration readout** (`pct_inhibition` /
+    `pct_activity`) or **functional potency** (`EC50`) — each first-class in
+    its **own comparability space** (`construct::readout`), never coerced into
+    Ki. Comparability keys keep these lanes from being pooled with affinity.
+
+## UHTS screening lane (additive, spec-aligned)
+- `POST /screen/primary` and `POST /screen/confirm` (see
+  `backend/app/screen.py`) mimic a 1536-well primary screen → confirmation.
+  They are **deterministic, mock-only, and never spend** — no Boltz/NIM calls.
+- Primary emits first-class `pct_inhibition` records; confirm emits SPR `Ki`
+  ground truth and records a calibration delta vs the cached Boltz prediction.
+- These routes were **added additively**; `docs/openapi.json` was regenerated
+  (`python backend/export_openapi.py`, 18 paths). No existing route shape or
+  response-model field changed.
 
 ## Workflow
 - Commit in small increments with clear messages.

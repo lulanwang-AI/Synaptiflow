@@ -3,10 +3,13 @@
 # Mock mode (no key, spends nothing):   BOLTZ_MOCK=1 make up
 # Live mode (needs key, within cap):    BOLTZ_API_KEY=sk-... BOLTZ_MAX_SPEND_USD=25 make up
 #
-# Env vars (read by the backend / boltz_client):
+# Env vars (read by the backend / boltz_client / nim_client):
 #   BOLTZ_MOCK            1 = canned outputs, no network, no spend (default for demo)
 #   BOLTZ_API_KEY         required only for live Boltz calls
 #   BOLTZ_MAX_SPEND_USD   hard cap on cumulative live spend (default 50)
+#   NIM_MOCK              1 = canned NIM outputs, no network (default for demo)
+#   NVIDIA_API_KEY        required only for live NIM (AlphaFold2/MolMIM/DiffDock)
+#   GENERATOR_ENGINE      boltz (BoltzMol, default) | molmim (NVIDIA NIM)
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend

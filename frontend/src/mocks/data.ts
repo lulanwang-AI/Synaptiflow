@@ -12,13 +12,45 @@ import type {
   AssayRecordIn,
   BlockedReason,
   CompoundView,
+  ConfirmHit,
+  ConfirmResult,
+  DockResponse,
+  FoldResult,
   LoopSummary,
   Metrics,
   Prediction,
+  PrimaryHit,
+  PrimaryResult,
+  QueueItem,
+  QueueView,
   RecordPatch,
   RecordStatus,
   Target,
 } from "../api/types";
+
+// deterministic 32-bit hash for mock NIM outputs
+function hash32(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+// deterministic PRNG (mulberry32) seeded from a string — lets the screening
+// mock produce stable, sensible numbers with no backend, mirroring screen.py.
+function seededRng(seedStr: string): () => number {
+  let a = hash32(seedStr);
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const uni = (r: () => number, lo: number, hi: number) => lo + (hi - lo) * r();
 
 // --- pseudo identity derivation (deterministic, no RDKit in the browser) ---
 function fakeInchikey(smiles: string): string {
@@ -52,7 +84,9 @@ function compoundIdFor(inchikey: string): string {
 }
 
 // --- status computation (mirrors backend policy) ---
-const CONDITION_LIGHT = new Set(["Kd", "Ki"]);
+const PRIMARY = new Set(["pct_inhibition", "pct_activity"]); // UHTS primary screen
+const POTENCY = new Set(["EC50"]); // functional potency
+const RECOGNIZED = new Set(["Kd", "Ki", "IC50", "EC50", "pct_inhibition", "pct_activity"]);
 
 export function computeDerived(rec: AssayRecord): AssayRecord {
   const r: AssayRecord = JSON.parse(JSON.stringify(rec));
@@ -127,11 +161,13 @@ export function computeDerived(rec: AssayRecord): AssayRecord {
         "blocked: IC50 present but substrate_conc_M and km_M missing -> cannot derive Ki (Cheng-Prusoff).";
       missing_fields.push("conditions.substrate_conc_M", "conditions.km_M");
     }
-  } else if (!CONDITION_LIGHT.has(a.readout)) {
-    // readouts like pct_inhibition cannot be normalized to an affinity
+  } else if (PRIMARY.has(a.readout) || POTENCY.has(a.readout)) {
+    // primary % screen / functional potency: first-class, own space (no Ki)
+    status = "model_ready";
+  } else if (!RECOGNIZED.has(a.readout)) {
     status = "blocked";
     blocked_reason = "missing_conditions";
-    reason_detail = `blocked: readout '${a.readout}' is not an affinity and cannot be normalized to Ki.`;
+    reason_detail = `blocked: readout '${a.readout}' is not a recognized comparable.`;
   }
 
   // soft QC warnings -> normalizable (only if not already blocked)
@@ -149,11 +185,11 @@ export function computeDerived(rec: AssayRecord): AssayRecord {
     else if (a.readout === "Kd" && value_M != null) ki_M = value_M; // pooled by construct
   }
 
-  // comparability key: construct + readout family (Ki-comparable)
+  // comparability key: construct + readout space (Ki-comparable, or own space)
   let comparability_key: string | null = null;
   if (status !== "blocked" && a.target_construct) {
-    const family = a.readout === "Kd" ? "Kd" : "Ki";
-    comparability_key = `${a.target_construct}|${family}`;
+    const space = ki_M != null ? "Ki" : a.readout;
+    comparability_key = `${a.target_construct}::${space}`;
   }
 
   r.compound = c;
@@ -338,7 +374,11 @@ export interface MockState {
   records: AssayRecord[];
   approvedBatches: number;
   creditSpentUsd: number;
-  calibrationErrors: number[];
+  // Calibration table keyed per compound (inchikey), mirroring the backend's
+  // single calibration table — both replay and screening-confirm write here.
+  calibrationByKey: Record<string, number>;
+  queue: QueueItem[];
+  lastBatch: AcquisitionBatch | null;
 }
 
 let state: MockState;
@@ -361,7 +401,9 @@ export function resetState(): number {
     records: buildSeedRecords(),
     approvedBatches: 0,
     creditSpentUsd: 4.8,
-    calibrationErrors: [],
+    calibrationByKey: {},
+    queue: [],
+    lastBatch: null,
   };
   return state.records.length;
 }
@@ -441,13 +483,51 @@ const CANDIDATES: AcquisitionBatch["candidates"] = [
 ];
 
 export function acquisitionBatch(): AcquisitionBatch {
-  return {
+  const batch: AcquisitionBatch = {
     target_name: "KINASE_X",
     generated: 240,
     scored: 240,
     shortlisted: CANDIDATES.length,
     candidates: JSON.parse(JSON.stringify(CANDIDATES)),
   };
+  getState().lastBatch = batch;
+  return batch;
+}
+
+// Discover's POST /acquisition/run: num_molecules sizes the generation count,
+// and a reference ligand (MolMIM optimize) is retained as the top seed hit.
+export function acquisitionRun(
+  numMolecules?: number,
+  referenceSmiles?: string | null,
+): AcquisitionBatch {
+  const n = numMolecules && numMolecules > 0 ? numMolecules : 12;
+  const base = JSON.parse(JSON.stringify(CANDIDATES)) as AcquisitionBatch["candidates"];
+  if (referenceSmiles && referenceSmiles.trim()) {
+    const smi = referenceSmiles.trim();
+    base.unshift({
+      smiles: smi,
+      inchikey: fakeInchikey(smi),
+      mu: 8.1,
+      sigma: 0.25,
+      boltz_affinity: -2.4,
+      adme_flags: [],
+      ood_flag: false,
+      tag: "exploit",
+      rationale:
+        "MolMIM optimization seeded from the reference ligand; closest analog retained.",
+      design_run_id: "molmim-optimize",
+    });
+  }
+  const candidates = base.slice(0, 5);
+  const batch: AcquisitionBatch = {
+    target_name: "KINASE_X",
+    generated: n,
+    scored: n,
+    shortlisted: candidates.length,
+    candidates,
+  };
+  getState().lastBatch = batch;
+  return batch;
 }
 
 export const TARGET: Target = {
@@ -467,7 +547,7 @@ export function loopSummary(): LoopSummary {
   const generated = 240;
   const scored = 240;
   const selected = CANDIDATES.length;
-  const in_synthesis = s.approvedBatches > 0 ? CANDIDATES.length : 0;
+  const in_synthesis = s.queue.length;
   const ingested = s.records.length;
   const assayed = s.records.length;
   return {
@@ -495,11 +575,11 @@ export function metrics(): Metrics {
     }
   }
   const queue_depths = {
-    synthesis: s.approvedBatches > 0 ? CANDIDATES.length : 0,
+    synthesis: s.queue.length,
     assay: 0,
     ingest_pending: 0,
   };
-  const errs = s.calibrationErrors;
+  const errs = Object.values(s.calibrationByKey);
   const calibration_error =
     errs.length > 0 ? errs.reduce((a, b) => a + b, 0) / errs.length : null;
   const cap = 2000;
@@ -632,51 +712,103 @@ export function patchRecord(
   return recomputed;
 }
 
+export function queueView(): QueueView {
+  const s = getState();
+  return { depth: s.queue.length, items: JSON.parse(JSON.stringify(s.queue)) };
+}
+
+// --- NIM tier mocks (AlphaFold2 fold, DiffDock dock) ---
+export function foldMock(target: Target): FoldResult {
+  const seq = target.protein_sequence ?? "";
+  const h = hash32(seq);
+  const plddt = Math.round((72 + (h % 230) / 10) * 10) / 10; // 72.0–95.0
+  let pocket = target.pocket_residues ?? [];
+  if (!pocket.length) {
+    const len = seq.length || 320;
+    const set = new Set<number>();
+    let x = h || 1;
+    for (let i = 0; i < 8; i++) {
+      x = (Math.imul(x, 1664525) + 1013904223) >>> 0;
+      set.add((x % Math.max(2, len - 1)) + 1);
+    }
+    pocket = Array.from(set).sort((a, b) => a - b);
+  }
+  return { plddt, pocket_residues: pocket, model: "alphafold2" };
+}
+
+export function dockMock(smiles: string[]): DockResponse {
+  return {
+    results: smiles.map((s) => {
+      const h = hash32("dock|" + s);
+      const conf = Math.round((0.4 + ((h % 1000) / 1000) * 0.55) * 1000) / 1000;
+      return { smiles: s, dock_confidence: conf, model: "diffdock" };
+    }),
+  };
+}
+
 export function approveBatch() {
   const s = getState();
   s.approvedBatches += 1;
   s.creditSpentUsd += 12.5; // shortlist Boltz screen/adme spend
+  const now = Date.now() / 1000;
+  const batchCands = s.lastBatch?.candidates ?? CANDIDATES;
+  for (const c of batchCands) {
+    if (s.queue.some((q) => q.inchikey === c.inchikey)) continue;
+    s.queue.push({
+      smiles: c.smiles,
+      inchikey: c.inchikey,
+      target_construct: "KINASE_X_1-320_His",
+      boltz_affinity_loguM: c.boltz_affinity ?? null,
+      design_run_id: c.design_run_id ?? null,
+      selected_at: now,
+    });
+  }
   return loopSummary();
 }
 
 export function replay(inchikeys?: string[] | null) {
   const s = getState();
-  // simulate wet-lab results returning for the acquisition batch, re-ingested
-  // as model-ready Ki records, and produce a calibration delta vs prediction.
-  const cands = CANDIDATES.filter(
-    (c) => !inchikeys || inchikeys.includes(c.inchikey),
+  // simulate wet-lab results returning for queued candidates, re-ingested as
+  // model-ready Ki records, with a calibration delta vs the Boltz prediction.
+  // Mirrors backend loop._mocked_measurement: measured = pred + uniform(-0.8,1.2).
+  const items = s.queue.filter(
+    (q) => !inchikeys || inchikeys.includes(q.inchikey),
   );
   const newRecords: AssayRecord[] = [];
-  for (const c of cands) {
-    // turn mu (pKi) into a measured Ki(M): Ki = 10^-pKi
-    const noisy = c.mu + (Math.random() - 0.5) * 0.6;
-    const ki = Math.pow(10, -noisy);
+  for (const item of items) {
+    const pred = item.boltz_affinity_loguM ?? 0;
+    const measuredLoguM = pred + (Math.random() * 2 - 0.8);
+    const ki = Math.pow(10, measuredLoguM - 6); // log µM -> M
     const rec = computeDerived({
-      compound: { smiles: c.smiles, inchikey: c.inchikey },
+      compound: { smiles: item.smiles, inchikey: item.inchikey },
       assay: {
-        assay_id: `ASY-REPLAY-${c.inchikey.slice(0, 4)}`,
+        assay_id: `ASY-REPLAY-${item.inchikey.slice(0, 4)}`,
         assay_type: "SPR",
         readout: "Ki",
-        target_construct: "KINASE_X_1-320_His",
+        target_construct: item.target_construct ?? "KINASE_X_1-320_His",
         value: ki,
         unit: "M",
       },
       conditions: { temperature_c: 25, ph: 7.4 },
-      measurement: { replicates: 3, qc_flag: "pass", operator: "replay", date: "2026-06-20" },
-      provenance: { source_system: "replay", run_id: "REPLAY-2026-06-20" },
+      measurement: { replicates: 3, qc_flag: "pass", operator: "loop", date: "2026-06-20" },
+      provenance: { source_system: "replayed-synthesis", run_id: "RUN-REPLAY" },
       record_id: nextRecordId(),
       status: "model_ready",
     } as AssayRecord);
     s.records.push(rec);
     newRecords.push(rec);
 
-    // calibration: |Boltz pred (log-µM) - measured (log-µM)|
-    if (c.boltz_affinity != null) {
-      const measuredLoguM = Math.log10(ki / 1e-6);
-      s.calibrationErrors.push(Math.abs(c.boltz_affinity - measuredLoguM));
+    // calibration: |Boltz pred (log-µM) - measured (log-µM)|, keyed per compound
+    if (item.boltz_affinity_loguM != null) {
+      s.calibrationByKey[item.inchikey] = Math.abs(
+        item.boltz_affinity_loguM - measuredLoguM,
+      );
     }
   }
-  const errs = s.calibrationErrors;
+  // drain the replayed items from the queue
+  const replayedKeys = new Set(items.map((i) => i.inchikey));
+  s.queue = s.queue.filter((q) => !replayedKeys.has(q.inchikey));
+  const errs = Object.values(s.calibrationByKey);
   const calibration_error =
     errs.length > 0 ? errs.reduce((a, b) => a + b, 0) / errs.length : null;
   return {
@@ -684,5 +816,144 @@ export function replay(inchikeys?: string[] | null) {
     records: newRecords,
     calibration_error:
       calibration_error != null ? Number(calibration_error.toFixed(3)) : null,
+  };
+}
+
+// --- UHTS screening campaign mock (mirrors backend/app/screen.py) -----------
+// The construct the whole loop keys off; matches screen.py CONSTRUCT.
+const SCREEN_CONSTRUCT = "KINASE_X_1-320_His";
+const HIT_THRESHOLD = 40.0;
+
+// Boltz predicted log-µM for a SMILES, if the compound was part of a batch.
+function predictedLoguM(smiles: string): number | null {
+  const c = CANDIDATES.find((x) => x.smiles === smiles);
+  return c?.boltz_affinity ?? null;
+}
+
+// Upsert a record by record_id so re-running a campaign overwrites rather than
+// piling up duplicate rows (keeps Records/Metrics tidy across demo runs).
+function upsertById(rec: AssayRecord): AssayRecord {
+  const s = getState();
+  const idx = s.records.findIndex((r) => r.record_id === rec.record_id);
+  if (idx >= 0) s.records[idx] = rec;
+  else s.records.push(rec);
+  return rec;
+}
+
+const round1 = (v: number) => Math.round(v * 10) / 10;
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+// 1536-well primary screen: single-concentration % inhibition + hit calls, with
+// each candidate ingested as a first-class model-ready primary record.
+export function primaryMock(smilesList: string[]): PrimaryResult {
+  const results: PrimaryHit[] = [];
+  for (const smi of smilesList) {
+    const ik = fakeInchikey(smi);
+    const predicted = predictedLoguM(smi);
+    const strength =
+      predicted != null
+        ? Math.max(0, 2.6 - predicted)
+        : uni(seededRng(`strength|${ik}`), 0.2, 4.0);
+    const r = seededRng(`primary|${ik}`);
+    const pct = round1(clamp(strength * 17 + uni(r, -10, 12) + 12, -8, 99));
+    const is_hit = pct >= HIT_THRESHOLD;
+    results.push({ smiles: smi, inchikey: ik, pct_inhibition: pct, is_hit });
+
+    upsertById(
+      computeDerived({
+        compound: { smiles: smi, inchikey: ik },
+        assay: {
+          assay_id: "UHTS-PRIMARY",
+          assay_type: "primary_screen",
+          readout: "pct_inhibition",
+          target_construct: SCREEN_CONSTRUCT,
+          value: pct,
+          unit: "%",
+        },
+        conditions: { temperature_c: 25 },
+        measurement: { replicates: 1, qc_flag: "pass", operator: "uhts" },
+        provenance: { source_system: "1536-UHTS", run_id: "RUN-UHTS" },
+        record_id: `SCR-PRIM-${ik.slice(0, 8)}`,
+        status: "model_ready",
+      } as AssayRecord),
+    );
+  }
+  const n = results.length;
+  const hits = results.filter((x) => x.is_hit).length;
+  const z_prime = Math.round((0.72 + (hash32(`zprime|${SCREEN_CONSTRUCT}`) % 900) / 10000) * 1000) / 1000;
+  return {
+    screened: n,
+    plate_wells: 1536,
+    z_prime,
+    hit_threshold: HIT_THRESHOLD,
+    hits,
+    hit_rate: n ? Math.round((hits / n) * 1000) / 1000 : 0,
+    results,
+  };
+}
+
+// Confirm hits (dose-response IC50/EC50) + characterize (SPR Kd/Ki). The
+// measured Ki is ingested as ground truth and diffed against the cached Boltz
+// prediction — the calibration signal that grades the model.
+export function confirmMock(smilesList: string[]): ConfirmResult {
+  const s = getState();
+  const out: ConfirmHit[] = [];
+  for (const smi of smilesList) {
+    const ik = fakeInchikey(smi);
+    const predicted = predictedLoguM(smi);
+    const r = seededRng(`confirm|${ik}`);
+    const base = predicted != null ? predicted : uni(r, -2.0, 1.5);
+    const measured = base + uni(r, -0.6, 1.0); // bias + noise = fidelity gap
+    const ki = Math.pow(10, measured - 6.0); // log-µM → M
+    const ic50 = ki * (1.4 + r());
+    const kd = ki * (0.7 + r() * 0.5);
+    const qc: string = r() < 0.18 ? "aggregator" : "pass";
+    const confirmed = ic50 < 1e-5 && qc !== "fail";
+
+    upsertById(
+      computeDerived({
+        compound: { smiles: smi, inchikey: ik },
+        assay: {
+          assay_id: "CONF-SPR",
+          assay_type: "SPR",
+          readout: "Ki",
+          target_construct: SCREEN_CONSTRUCT,
+          value: ki,
+          unit: "M",
+        },
+        conditions: { temperature_c: 25, ph: 7.4 },
+        measurement: { replicates: 3, qc_flag: qc, operator: "confirm" },
+        provenance: { source_system: "confirmation", run_id: "RUN-CONF" },
+        record_id: `SCR-CONF-${ik.slice(0, 8)}`,
+        status: "model_ready",
+      } as AssayRecord),
+    );
+
+    // calibration: |Boltz predicted (log-µM) − measured (log-µM)|, keyed per
+    // compound so re-confirming updates rather than double-counts.
+    if (predicted != null) {
+      s.calibrationByKey[ik] = Math.abs(predicted - measured);
+    }
+
+    out.push({
+      smiles: smi,
+      inchikey: ik,
+      ic50_M: ic50,
+      ec50_M: ic50 * 1.1,
+      kd_M: kd,
+      ki_M: ki,
+      predicted_loguM: predicted,
+      measured_loguM: Math.round(measured * 1000) / 1000,
+      delta_loguM: predicted != null ? Math.round((predicted - measured) * 1000) / 1000 : null,
+      qc_flag: qc,
+      confirmed,
+    });
+  }
+  const vals = Object.values(s.calibrationByKey);
+  const cal = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  return {
+    confirmed: out.filter((x) => x.confirmed).length,
+    results: out,
+    calibration_error: cal != null ? Math.round(cal * 10000) / 10000 : null,
   };
 }

@@ -102,3 +102,31 @@ def test_soft_qc_is_normalizable():
 def test_unit_normalization_nM():
     rec = ingest(_record(value=100, unit="nM"))
     assert math.isclose(rec.value_M, 1e-7, rel_tol=1e-9)
+
+
+def test_pct_inhibition_is_model_ready():
+    # A primary UHTS % inhibition reading is first-class, in its own space.
+    rec = ingest(_record(assay_type="primary_screen", readout="pct_inhibition",
+                         value=62.5, unit="%"))
+    assert rec.status == RecordStatus.model_ready
+    assert rec.ki_M is None
+    assert rec.comparability_key.endswith("::pct_inhibition")
+
+
+def test_pct_inhibition_needs_percent_unit():
+    rec = ingest(_record(assay_type="primary_screen", readout="pct_inhibition",
+                         value=62.5, unit="M"))
+    assert rec.status == RecordStatus.blocked
+    assert rec.blocked_reason == BlockedReason.missing_unit
+
+
+def test_ec50_is_model_ready_potency():
+    rec = ingest(_record(assay_type="cell_based", readout="EC50", value=3e-7, unit="M"))
+    assert rec.status == RecordStatus.model_ready
+    assert rec.ki_M is None
+    assert rec.comparability_key.endswith("::EC50")
+
+
+def test_unknown_readout_still_blocked():
+    rec = ingest(_record(readout="kon", value=1e5, unit="M"))
+    assert rec.status == RecordStatus.blocked

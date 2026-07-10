@@ -8,22 +8,33 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from .. import acquisition, loop, seed_loader
+from .. import acquisition, loop, screen, seed_loader
 from ..boltz_client import get_client
 from ..schema import (
     AcquisitionBatch,
     AssayRecord,
     AssayRecordIn,
     CompoundView,
+    ConfirmResult,
+    DockRequest,
+    DockResponse,
+    DockResult,
+    FoldResult,
     IngestResponse,
+    PoseRequest,
+    PoseResult,
+    PrimaryResult,
+    ScreenRequest,
     LoopSummary,
     Metrics,
+    QueueView,
     RecordPatch,
     ReplayRequest,
     ReplayResponse,
     ResetResponse,
     Target,
 )
+from ..nim_client import get_nim_client
 from ..store import get_store
 
 router = APIRouter()
@@ -38,6 +49,11 @@ _LAST_BATCH: dict = {"batch": None}
 @router.get("/loop/summary", response_model=LoopSummary, tags=["loop"])
 def loop_summary() -> LoopSummary:
     return get_store().loop_summary()
+
+
+@router.get("/loop/queue", response_model=QueueView, tags=["loop"])
+def loop_queue() -> QueueView:
+    return loop.queue_view()
 
 
 @router.post("/loop/replay", response_model=ReplayResponse, tags=["loop"])
@@ -124,6 +140,26 @@ def acquisition_batch() -> AcquisitionBatch:
     return batch
 
 
+@router.post("/acquisition/run", response_model=AcquisitionBatch, tags=["acquisition"])
+def acquisition_run(
+    target: Target,
+    num_molecules: int = 12,
+    reference_smiles: str | None = None,
+) -> AcquisitionBatch:
+    """Generate hits against a user-supplied target (protein/peptide pocket).
+
+    Drives the same pipeline as /acquisition/batch but with the inserted target,
+    so the proposed hits respond to the input. `num_molecules` sizes the
+    generation step; `reference_smiles` seeds MolMIM optimization when
+    GENERATOR_ENGINE=molmim. The result is cached for approve.
+    """
+    n = max(1, min(int(num_molecules), 40))
+    ref = reference_smiles.strip() if reference_smiles and reference_smiles.strip() else None
+    batch = acquisition.build_batch(target, num_molecules=n, reference_smiles=ref)
+    _LAST_BATCH["batch"] = batch
+    return batch
+
+
 @router.post("/acquisition/approve", response_model=LoopSummary, tags=["acquisition"])
 def acquisition_approve() -> LoopSummary:
     batch = _LAST_BATCH["batch"]
@@ -133,6 +169,47 @@ def acquisition_approve() -> LoopSummary:
         _LAST_BATCH["batch"] = batch
     loop.approve(batch)
     return get_store().loop_summary()
+
+
+# --------------------------------------------------------------------------- #
+# Structure tier — AlphaFold2 fold + DiffDock dock (via nim_client)
+# --------------------------------------------------------------------------- #
+@router.post("/structure/fold", response_model=FoldResult, tags=["structure"])
+def structure_fold(target: Target) -> FoldResult:
+    r = get_nim_client().fold(target)
+    return FoldResult(
+        plddt=r["plddt"], pocket_residues=r["pocket_residues"], model=r["model"]
+    )
+
+
+@router.post("/dock", response_model=DockResponse, tags=["structure"])
+def dock(req: DockRequest) -> DockResponse:
+    results = get_nim_client().dock(req.target, req.smiles)
+    return DockResponse(results=[DockResult(**x) for x in results])
+
+
+@router.post("/structure/pose", response_model=PoseResult, tags=["structure"])
+def structure_pose(req: PoseRequest) -> PoseResult:
+    r = get_nim_client().pose(req.target, req.smiles)
+    return PoseResult(
+        smiles=r["smiles"],
+        sdf=r.get("sdf"),
+        receptor_pdb=r.get("receptor_pdb"),
+        model=r["model"],
+    )
+
+
+# --------------------------------------------------------------------------- #
+# UHTS screening campaign — primary screen → confirmation/characterization
+# --------------------------------------------------------------------------- #
+@router.post("/screen/primary", response_model=PrimaryResult, tags=["screen"])
+def screen_primary(req: ScreenRequest) -> PrimaryResult:
+    return screen.run_primary(req.smiles, req.target)
+
+
+@router.post("/screen/confirm", response_model=ConfirmResult, tags=["screen"])
+def screen_confirm(req: ScreenRequest) -> ConfirmResult:
+    return screen.run_confirm(req.smiles, req.target)
 
 
 # --------------------------------------------------------------------------- #
@@ -152,10 +229,12 @@ def get_target() -> Target:
 @router.post("/reset", response_model=ResetResponse, tags=["loop"])
 def reset() -> ResetResponse:
     from ..boltz_client import reset_client
+    from ..nim_client import reset_nim_client
     from ..surrogate import reset_surrogate
 
     n = seed_loader.seed_store()
     reset_surrogate()
     reset_client()
+    reset_nim_client()
     _LAST_BATCH["batch"] = None
     return ResetResponse(ok=True, records=n)

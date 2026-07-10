@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Closed-Loop Discovery MVP",
+    "title": "SynaptiFlow \u2014 Closed-Loop Discovery MVP",
     "description": "Assay-metadata schema as the spine of wet\u2194dry communication. Boltz outputs are PREDICTIONS, never assay records. All Boltz access goes through app/boltz_client.py with mock mode, caching, and a credit guard.",
     "version": "0.1.0"
   },
@@ -20,6 +20,27 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LoopSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/loop/queue": {
+      "get": {
+        "tags": [
+          "loop"
+        ],
+        "summary": "Loop Queue",
+        "operationId": "loop_queue_loop_queue_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueView"
                 }
               }
             }
@@ -322,6 +343,76 @@
         }
       }
     },
+    "/acquisition/run": {
+      "post": {
+        "tags": [
+          "acquisition"
+        ],
+        "summary": "Acquisition Run",
+        "description": "Generate hits against a user-supplied target (protein/peptide pocket).\n\nDrives the same pipeline as /acquisition/batch but with the inserted target,\nso the proposed hits respond to the input. `num_molecules` sizes the\ngeneration step; `reference_smiles` seeds MolMIM optimization when\nGENERATOR_ENGINE=molmim. The result is cached for approve.",
+        "operationId": "acquisition_run_acquisition_run_post",
+        "parameters": [
+          {
+            "name": "num_molecules",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 12,
+              "title": "Num Molecules"
+            }
+          },
+          {
+            "name": "reference_smiles",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Reference Smiles"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Target"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcquisitionBatch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/acquisition/approve": {
       "post": {
         "tags": [
@@ -336,6 +427,211 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LoopSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/structure/fold": {
+      "post": {
+        "tags": [
+          "structure"
+        ],
+        "summary": "Structure Fold",
+        "operationId": "structure_fold_structure_fold_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Target"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoldResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dock": {
+      "post": {
+        "tags": [
+          "structure"
+        ],
+        "summary": "Dock",
+        "operationId": "dock_dock_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/structure/pose": {
+      "post": {
+        "tags": [
+          "structure"
+        ],
+        "summary": "Structure Pose",
+        "operationId": "structure_pose_structure_pose_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PoseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoseResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/screen/primary": {
+      "post": {
+        "tags": [
+          "screen"
+        ],
+        "summary": "Screen Primary",
+        "operationId": "screen_primary_screen_primary_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrimaryResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/screen/confirm": {
+      "post": {
+        "tags": [
+          "screen"
+        ],
+        "summary": "Screen Confirm",
+        "operationId": "screen_confirm_screen_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1079,6 +1375,223 @@
         "type": "object",
         "title": "Conditions"
       },
+      "ConfirmHit": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "inchikey": {
+            "type": "string",
+            "title": "Inchikey"
+          },
+          "ic50_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ic50 M"
+          },
+          "ec50_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ec50 M"
+          },
+          "kd_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kd M"
+          },
+          "ki_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ki M"
+          },
+          "predicted_loguM": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predicted Logum"
+          },
+          "measured_loguM": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured Logum"
+          },
+          "delta_loguM": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Logum",
+            "description": "Predicted \u2212 measured (log-\u00b5M)"
+          },
+          "qc_flag": {
+            "type": "string",
+            "title": "Qc Flag",
+            "default": "pass"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles",
+          "inchikey"
+        ],
+        "title": "ConfirmHit"
+      },
+      "ConfirmResult": {
+        "properties": {
+          "confirmed": {
+            "type": "integer",
+            "title": "Confirmed",
+            "default": 0
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ConfirmHit"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "calibration_error": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Error"
+          }
+        },
+        "type": "object",
+        "title": "ConfirmResult"
+      },
+      "DockRequest": {
+        "properties": {
+          "target": {
+            "$ref": "#/components/schemas/Target"
+          },
+          "smiles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Smiles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target"
+        ],
+        "title": "DockRequest"
+      },
+      "DockResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/DockResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "title": "DockResponse"
+      },
+      "DockResult": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "dock_confidence": {
+            "type": "number",
+            "title": "Dock Confidence",
+            "description": "DiffDock pose confidence (0\u20131)"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "diffdock"
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles",
+          "dock_confidence"
+        ],
+        "title": "DockResult"
+      },
+      "FoldResult": {
+        "properties": {
+          "plddt": {
+            "type": "number",
+            "title": "Plddt",
+            "description": "Mean predicted structure confidence (pLDDT)"
+          },
+          "pocket_residues": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pocket Residues"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "alphafold2"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plddt"
+        ],
+        "title": "FoldResult"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1291,6 +1804,71 @@
         "type": "object",
         "title": "Metrics"
       },
+      "PoseRequest": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Target"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles"
+        ],
+        "title": "PoseRequest"
+      },
+      "PoseResult": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "sdf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sdf",
+            "description": "3-D docked pose as an SDF/MOL block"
+          },
+          "receptor_pdb": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receptor Pdb",
+            "description": "Folded receptor structure (PDB) to overlay, when available"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "diffdock"
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles"
+        ],
+        "title": "PoseResult"
+      },
       "Prediction": {
         "properties": {
           "smiles": {
@@ -1357,6 +1935,77 @@
         "type": "object",
         "title": "PredictionProvenance"
       },
+      "PrimaryHit": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "inchikey": {
+            "type": "string",
+            "title": "Inchikey"
+          },
+          "pct_inhibition": {
+            "type": "number",
+            "title": "Pct Inhibition"
+          },
+          "is_hit": {
+            "type": "boolean",
+            "title": "Is Hit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles",
+          "inchikey",
+          "pct_inhibition",
+          "is_hit"
+        ],
+        "title": "PrimaryHit"
+      },
+      "PrimaryResult": {
+        "properties": {
+          "screened": {
+            "type": "integer",
+            "title": "Screened",
+            "default": 0
+          },
+          "plate_wells": {
+            "type": "integer",
+            "title": "Plate Wells",
+            "default": 1536
+          },
+          "z_prime": {
+            "type": "number",
+            "title": "Z Prime",
+            "default": 0.0
+          },
+          "hit_threshold": {
+            "type": "number",
+            "title": "Hit Threshold",
+            "default": 40.0
+          },
+          "hits": {
+            "type": "integer",
+            "title": "Hits",
+            "default": 0
+          },
+          "hit_rate": {
+            "type": "number",
+            "title": "Hit Rate",
+            "default": 0.0
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PrimaryHit"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "title": "PrimaryResult"
+      },
       "Provenance": {
         "properties": {
           "source_system": {
@@ -1395,6 +2044,88 @@
         },
         "type": "object",
         "title": "Provenance"
+      },
+      "QueueItem": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "inchikey": {
+            "type": "string",
+            "title": "Inchikey"
+          },
+          "target_construct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Construct"
+          },
+          "boltz_affinity_loguM": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boltz Affinity Logum",
+            "description": "Cached Boltz prediction (log-\u00b5M); the value replay calibrates against"
+          },
+          "design_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Design Run Id"
+          },
+          "selected_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected At",
+            "description": "Unix time the candidate was approved"
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles",
+          "inchikey"
+        ],
+        "title": "QueueItem"
+      },
+      "QueueView": {
+        "properties": {
+          "depth": {
+            "type": "integer",
+            "title": "Depth",
+            "default": 0
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QueueItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "title": "QueueView"
       },
       "RecordPatch": {
         "properties": {
@@ -1531,6 +2262,29 @@
           "records"
         ],
         "title": "ResetResponse"
+      },
+      "ScreenRequest": {
+        "properties": {
+          "smiles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Smiles"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Target"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "ScreenRequest"
       },
       "Target": {
         "properties": {

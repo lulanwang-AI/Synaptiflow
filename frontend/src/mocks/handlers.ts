@@ -4,7 +4,7 @@
 import { http, HttpResponse } from "msw";
 import { API_BASE } from "../api/client";
 import * as db from "./data";
-import type { AssayRecordIn, RecordPatch, ReplayRequest } from "../api/types";
+import type { AssayRecordIn, RecordPatch, ReplayRequest, Target } from "../api/types";
 
 // Match both the configured base URL and same-origin relative paths,
 // so the worker intercepts regardless of how the client is configured.
@@ -14,6 +14,10 @@ const route = (path: string) => bases.map((b) => `${b}${path}`);
 export const handlers = [
   ...route("/loop/summary").map((u) =>
     http.get(u, () => HttpResponse.json(db.loopSummary())),
+  ),
+
+  ...route("/loop/queue").map((u) =>
+    http.get(u, () => HttpResponse.json(db.queueView())),
   ),
 
   ...route("/loop/replay").map((u) =>
@@ -70,6 +74,51 @@ export const handlers = [
 
   ...route("/acquisition/batch").map((u) =>
     http.get(u, () => HttpResponse.json(db.acquisitionBatch())),
+  ),
+
+  ...route("/acquisition/run").map((u) =>
+    http.post(u, ({ request }) => {
+      const url = new URL(request.url);
+      const num = Number(url.searchParams.get("num_molecules")) || undefined;
+      const ref = url.searchParams.get("reference_smiles") || undefined;
+      return HttpResponse.json(db.acquisitionRun(num, ref));
+    }),
+  ),
+
+  ...route("/structure/fold").map((u) =>
+    http.post(u, async ({ request }) => {
+      const target = (await request.json()) as Target;
+      return HttpResponse.json(db.foldMock(target));
+    }),
+  ),
+
+  ...route("/dock").map((u) =>
+    http.post(u, async ({ request }) => {
+      const body = (await request.json()) as { smiles?: string[] };
+      return HttpResponse.json(db.dockMock(body.smiles ?? []));
+    }),
+  ),
+
+  ...route("/structure/pose").map((u) =>
+    http.post(u, async ({ request }) => {
+      const body = (await request.json()) as { smiles?: string };
+      // Offline mock has no chemistry toolkit; the viewer falls back to 2-D.
+      return HttpResponse.json({ smiles: body.smiles ?? "", sdf: null, model: "diffdock" });
+    }),
+  ),
+
+  ...route("/screen/primary").map((u) =>
+    http.post(u, async ({ request }) => {
+      const body = (await request.json()) as { smiles?: string[] };
+      return HttpResponse.json(db.primaryMock(body.smiles ?? []));
+    }),
+  ),
+
+  ...route("/screen/confirm").map((u) =>
+    http.post(u, async ({ request }) => {
+      const body = (await request.json()) as { smiles?: string[] };
+      return HttpResponse.json(db.confirmMock(body.smiles ?? []));
+    }),
   ),
 
   ...route("/acquisition/approve").map((u) =>
