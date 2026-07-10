@@ -103,6 +103,18 @@ Run `BOLTZ_MOCK=1 make up` to rehearse with zero spend, or live mode within the 
 > conformer in a WebGL viewer (3Dmol.js), overlaying the folded receptor cartoon
 > when a structure is available (mock 3-D from RDKit). **BoltzMol stays the
 > default generator/oracle**; MolMIM is opt-in via `GENERATOR_ENGINE=molmim`.
+>
+> For a **UHTS (ultra-high-throughput screening) workflow**, the **Screening
+> Campaign (`/screen`)** view is the assay-side loop in four clicks: take the
+> predicted molecules → run a **1536-well primary screen** (single-concentration
+> `% inhibition`, `Z′`-factor QC, hit calling at 40%, `POST /screen/primary`) →
+> **confirm & characterize** the hits (dose-response `IC50`/`EC50` + SPR
+> `Kd`/`Ki`, `POST /screen/confirm`) → the measured `Ki` re-enters as **ground
+> truth** (first-class model-ready records) and is diffed against the cached
+> Boltz prediction, updating `calibration_error`. Primary `% inhibition` and
+> functional `EC50` are first-class model-ready readouts in their **own
+> comparability space** — never coerced into `Ki`. These routes are additive and
+> deterministic mock-only (no spend); `docs/openapi.json` was regenerated.
 
 1. **Overview (`/`)** — the two-loop flow with live counts: *N* model-ready,
    *M* blocked (blocked highlighted in red).
@@ -169,8 +181,9 @@ backend/   FastAPI + RDKit + scikit-learn; SQLite activity store
     boltz_client.py THE ONLY path to Boltz: mock mode, cache, credit guard (FROZEN interface)
     api/routes.py   the frozen API surface
     seed/           seed records.jsonl + target.json
-frontend/  React + Vite + TypeScript SPA (10 views: overview, discover, workflow, target,
-           intake, records, compound, acquisition, synthesis queue, metrics), MSW mock fallback
+frontend/  React + Vite + TypeScript SPA (11 views: overview, discover, screen (UHTS
+           campaign), workflow, target, intake, records, compound, acquisition,
+           synthesis queue, metrics), MSW mock fallback
 docs/      context.md, spec.md, openapi.json (the frozen contract)
 ```
 
