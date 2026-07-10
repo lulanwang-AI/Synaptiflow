@@ -325,3 +325,48 @@ class PoseResult(BaseModel):
         None, description="Folded receptor structure (PDB) to overlay, when available"
     )
     model: str = "diffdock"
+
+
+# --------------------------------------------------------------------------- #
+# UHTS screening campaign (primary screen → confirmation → characterization)
+# --------------------------------------------------------------------------- #
+class ScreenRequest(BaseModel):
+    smiles: list[str] = Field(default_factory=list)
+    target: Optional[Target] = None
+
+
+class PrimaryHit(BaseModel):
+    smiles: str
+    inchikey: str
+    pct_inhibition: float
+    is_hit: bool
+
+
+class PrimaryResult(BaseModel):
+    screened: int = 0
+    plate_wells: int = 1536
+    z_prime: float = 0.0
+    hit_threshold: float = 40.0
+    hits: int = 0
+    hit_rate: float = 0.0
+    results: list[PrimaryHit] = Field(default_factory=list)
+
+
+class ConfirmHit(BaseModel):
+    smiles: str
+    inchikey: str
+    ic50_M: Optional[float] = None
+    ec50_M: Optional[float] = None
+    kd_M: Optional[float] = None
+    ki_M: Optional[float] = None
+    predicted_loguM: Optional[float] = None
+    measured_loguM: Optional[float] = None
+    delta_loguM: Optional[float] = Field(None, description="Predicted − measured (log-µM)")
+    qc_flag: str = "pass"
+    confirmed: bool = True
+
+
+class ConfirmResult(BaseModel):
+    confirmed: int = 0
+    results: list[ConfirmHit] = Field(default_factory=list)
+    calibration_error: Optional[float] = None

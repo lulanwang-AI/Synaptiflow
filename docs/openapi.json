@@ -557,6 +557,88 @@
         }
       }
     },
+    "/screen/primary": {
+      "post": {
+        "tags": [
+          "screen"
+        ],
+        "summary": "Screen Primary",
+        "operationId": "screen_primary_screen_primary_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrimaryResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/screen/confirm": {
+      "post": {
+        "tags": [
+          "screen"
+        ],
+        "summary": "Screen Confirm",
+        "operationId": "screen_confirm_screen_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/metrics": {
       "get": {
         "tags": [
@@ -1293,6 +1375,141 @@
         "type": "object",
         "title": "Conditions"
       },
+      "ConfirmHit": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "inchikey": {
+            "type": "string",
+            "title": "Inchikey"
+          },
+          "ic50_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ic50 M"
+          },
+          "ec50_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ec50 M"
+          },
+          "kd_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kd M"
+          },
+          "ki_M": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ki M"
+          },
+          "predicted_loguM": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predicted Logum"
+          },
+          "measured_loguM": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured Logum"
+          },
+          "delta_loguM": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Logum",
+            "description": "Predicted \u2212 measured (log-\u00b5M)"
+          },
+          "qc_flag": {
+            "type": "string",
+            "title": "Qc Flag",
+            "default": "pass"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles",
+          "inchikey"
+        ],
+        "title": "ConfirmHit"
+      },
+      "ConfirmResult": {
+        "properties": {
+          "confirmed": {
+            "type": "integer",
+            "title": "Confirmed",
+            "default": 0
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ConfirmHit"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "calibration_error": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Error"
+          }
+        },
+        "type": "object",
+        "title": "ConfirmResult"
+      },
       "DockRequest": {
         "properties": {
           "target": {
@@ -1718,6 +1935,77 @@
         "type": "object",
         "title": "PredictionProvenance"
       },
+      "PrimaryHit": {
+        "properties": {
+          "smiles": {
+            "type": "string",
+            "title": "Smiles"
+          },
+          "inchikey": {
+            "type": "string",
+            "title": "Inchikey"
+          },
+          "pct_inhibition": {
+            "type": "number",
+            "title": "Pct Inhibition"
+          },
+          "is_hit": {
+            "type": "boolean",
+            "title": "Is Hit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "smiles",
+          "inchikey",
+          "pct_inhibition",
+          "is_hit"
+        ],
+        "title": "PrimaryHit"
+      },
+      "PrimaryResult": {
+        "properties": {
+          "screened": {
+            "type": "integer",
+            "title": "Screened",
+            "default": 0
+          },
+          "plate_wells": {
+            "type": "integer",
+            "title": "Plate Wells",
+            "default": 1536
+          },
+          "z_prime": {
+            "type": "number",
+            "title": "Z Prime",
+            "default": 0.0
+          },
+          "hit_threshold": {
+            "type": "number",
+            "title": "Hit Threshold",
+            "default": 40.0
+          },
+          "hits": {
+            "type": "integer",
+            "title": "Hits",
+            "default": 0
+          },
+          "hit_rate": {
+            "type": "number",
+            "title": "Hit Rate",
+            "default": 0.0
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PrimaryHit"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "title": "PrimaryResult"
+      },
       "Provenance": {
         "properties": {
           "source_system": {
@@ -1974,6 +2262,29 @@
           "records"
         ],
         "title": "ResetResponse"
+      },
+      "ScreenRequest": {
+        "properties": {
+          "smiles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Smiles"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Target"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "ScreenRequest"
       },
       "Target": {
         "properties": {

@@ -40,6 +40,12 @@ _UNIT_TO_M = {
 
 _CONDITION_LIGHT = {"Kd", "Ki"}
 _SOFT_QC = {"aggregator", "fluorescence_interference"}
+# Functional / primary-screen readouts (Aaron's UHTS workflow). First-class and
+# model-ready in their OWN comparability space — usable, but never silently
+# pooled with Ki.
+_PRIMARY = {"pct_inhibition", "pct_activity"}   # single-concentration % readout
+_POTENCY = {"EC50"}                             # functional potency (molar)
+_PERCENT_UNITS = {"%", "pct", "percent"}
 
 
 def normalize_to_molar(value: Optional[float], unit: Optional[str]) -> Optional[float]:
@@ -103,14 +109,19 @@ def ingest(raw: AssayRecordIn, record_id: Optional[str] = None) -> AssayRecord:
     value = assay.get("value")
     construct = assay.get("target_construct")
     qc = (meas.get("qc_flag") or "pass").strip()
+    is_primary = readout in _PRIMARY
 
     # ---- normalize unit -------------------------------------------------- #
-    value_M = normalize_to_molar(value, unit)
+    # Primary % readouts are not concentrations; everything else is molar.
+    value_M = None if is_primary else normalize_to_molar(value, unit)
 
     # ---- hard blockers --------------------------------------------------- #
     if not construct:
         missing.append("assay.target_construct")
-    if not unit:
+    if is_primary:
+        if not unit or unit.strip() not in _PERCENT_UNITS:
+            missing.append("assay.unit")  # a % readout needs a percent unit
+    elif not unit:
         missing.append("assay.unit")
     elif value is not None and value_M is None:
         # unit present but unrecognized for a concentration readout
@@ -152,32 +163,35 @@ def ingest(raw: AssayRecordIn, record_id: Optional[str] = None) -> AssayRecord:
                 raw, rid, BlockedReason.missing_conditions, detail, missing_cond,
                 smiles_canonical=smiles_canonical, inchikey=inchikey, compound_id=compound_id,
             )
-    # Kd / pct_inhibition etc. carry no Ki; that's fine if condition-light.
-
-    # readout that is neither condition-light nor IC50 (e.g. pct_inhibition)
-    # cannot be normalized to an affinity → blocked missing_conditions.
-    if readout not in _CONDITION_LIGHT and readout != "IC50" and ki_M is None:
+    # Recognized readouts are model-ready in their own comparability space:
+    #   Kd/Ki (affinity) · IC50/EC50 (potency) · pct_inhibition/pct_activity
+    #   (primary screen). An unrecognized readout can't be compared → blocked.
+    _recognized = _CONDITION_LIGHT | _PRIMARY | _POTENCY | {"IC50"}
+    if readout not in _recognized and ki_M is None:
         return _blocked(
             raw, rid, BlockedReason.missing_conditions,
-            f"Readout {readout!r} is not a normalizable affinity (need Kd/Ki or "
-            "IC50 + conditions).",
+            f"Readout {readout!r} is not a recognized comparable "
+            "(expected Kd/Ki, IC50/EC50, or pct_inhibition/pct_activity).",
             ["assay.readout"],
             smiles_canonical=smiles_canonical, inchikey=inchikey, compound_id=compound_id,
         )
 
     # ---- status ---------------------------------------------------------- #
+    space = _affinity_space(readout, ki_M is not None)
+    comparability_key = f"{construct}::{space}"
+
     status = RecordStatus.model_ready
     blocked_reason = None
-    reason_detail = "Model-ready: identity resolved, construct/unit present, affinity comparable."
+    reason_detail = (
+        f"Model-ready: identity resolved, construct + unit present; "
+        f"comparable in {space} space."
+    )
     if qc in _SOFT_QC:
         status = RecordStatus.normalizable
         reason_detail = (
-            f"Usable with caution: soft QC warning ({qc}). Affinity comparable "
-            "but flagged for review."
+            f"Usable with caution: soft QC warning ({qc}); comparable in "
+            f"{space} space, flagged for review."
         )
-
-    space = _affinity_space(readout, ki_M is not None)
-    comparability_key = f"{construct}::{space}"
 
     data["compound"] = _with_identity(compound, smiles_canonical, inchikey, compound_id)
     return AssayRecord(

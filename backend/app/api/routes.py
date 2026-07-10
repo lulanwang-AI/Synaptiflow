@@ -8,13 +8,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from .. import acquisition, loop, seed_loader
+from .. import acquisition, loop, screen, seed_loader
 from ..boltz_client import get_client
 from ..schema import (
     AcquisitionBatch,
     AssayRecord,
     AssayRecordIn,
     CompoundView,
+    ConfirmResult,
     DockRequest,
     DockResponse,
     DockResult,
@@ -22,6 +23,8 @@ from ..schema import (
     IngestResponse,
     PoseRequest,
     PoseResult,
+    PrimaryResult,
+    ScreenRequest,
     LoopSummary,
     Metrics,
     QueueView,
@@ -194,6 +197,19 @@ def structure_pose(req: PoseRequest) -> PoseResult:
         receptor_pdb=r.get("receptor_pdb"),
         model=r["model"],
     )
+
+
+# --------------------------------------------------------------------------- #
+# UHTS screening campaign — primary screen → confirmation/characterization
+# --------------------------------------------------------------------------- #
+@router.post("/screen/primary", response_model=PrimaryResult, tags=["screen"])
+def screen_primary(req: ScreenRequest) -> PrimaryResult:
+    return screen.run_primary(req.smiles, req.target)
+
+
+@router.post("/screen/confirm", response_model=ConfirmResult, tags=["screen"])
+def screen_confirm(req: ScreenRequest) -> ConfirmResult:
+    return screen.run_confirm(req.smiles, req.target)
 
 
 # --------------------------------------------------------------------------- #
