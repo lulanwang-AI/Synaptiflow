@@ -8,12 +8,14 @@ import type {
   AssayRecord,
   AssayRecordIn,
   CompoundView,
+  ConfirmResult,
   DockResponse,
   FoldResult,
   IngestResponse,
   LoopSummary,
   Metrics,
   PoseResult,
+  PrimaryResult,
   QueueView,
   RecordPatch,
   ReplayRequest,
@@ -126,6 +128,18 @@ export const api = {
 
   pose: (smiles: string, target?: Target) =>
     request<PoseResult>("/structure/pose", {
+      method: "POST",
+      body: JSON.stringify({ smiles, target: target ?? null }),
+    }),
+
+  screenPrimary: (smiles: string[], target?: Target) =>
+    request<PrimaryResult>("/screen/primary", {
+      method: "POST",
+      body: JSON.stringify({ smiles, target: target ?? null }),
+    }),
+
+  screenConfirm: (smiles: string[], target?: Target) =>
+    request<ConfirmResult>("/screen/confirm", {
       method: "POST",
       body: JSON.stringify({ smiles, target: target ?? null }),
     }),

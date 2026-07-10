@@ -107,6 +107,20 @@ export const handlers = [
     }),
   ),
 
+  ...route("/screen/primary").map((u) =>
+    http.post(u, async ({ request }) => {
+      const body = (await request.json()) as { smiles?: string[] };
+      return HttpResponse.json(db.primaryMock(body.smiles ?? []));
+    }),
+  ),
+
+  ...route("/screen/confirm").map((u) =>
+    http.post(u, async ({ request }) => {
+      const body = (await request.json()) as { smiles?: string[] };
+      return HttpResponse.json(db.confirmMock(body.smiles ?? []));
+    }),
+  ),
+
   ...route("/acquisition/approve").map((u) =>
     http.post(u, () => HttpResponse.json(db.approveBatch())),
   ),

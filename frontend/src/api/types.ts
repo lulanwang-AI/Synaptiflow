@@ -234,3 +234,46 @@ export interface PoseResult {
   receptor_pdb?: string | null;
   model: string;
 }
+
+// --- UHTS screening campaign (primary screen → confirmation → characterize) ---
+export interface ScreenRequest {
+  smiles: string[];
+  target?: Target | null;
+}
+
+export interface PrimaryHit {
+  smiles: string;
+  inchikey: string;
+  pct_inhibition: number;
+  is_hit: boolean;
+}
+
+export interface PrimaryResult {
+  screened: number;
+  plate_wells: number;
+  z_prime: number;
+  hit_threshold: number;
+  hits: number;
+  hit_rate: number;
+  results: PrimaryHit[];
+}
+
+export interface ConfirmHit {
+  smiles: string;
+  inchikey: string;
+  ic50_M?: number | null;
+  ec50_M?: number | null;
+  kd_M?: number | null;
+  ki_M?: number | null;
+  predicted_loguM?: number | null;
+  measured_loguM?: number | null;
+  delta_loguM?: number | null;
+  qc_flag: string;
+  confirmed: boolean;
+}
+
+export interface ConfirmResult {
+  confirmed: number;
+  results: ConfirmHit[];
+  calibration_error?: number | null;
+}
