@@ -10,9 +10,9 @@ export const PERSONA_LABEL: Record<Persona, string> = {
 
 // Which routes each persona cares about (used to emphasise nav links).
 export const PERSONA_ROUTES: Record<Persona, string[]> = {
-  scientist: ["/discover", "/submit", "/records", "/compound"],
-  ml: ["/discover", "/acquisition", "/records", "/submit", "/target", "/synthesis", "/workflow"],
-  manager: ["/", "/discover", "/metrics", "/target", "/synthesis", "/workflow"],
+  scientist: ["/discover", "/screen", "/submit", "/records", "/compound"],
+  ml: ["/discover", "/screen", "/acquisition", "/records", "/submit", "/target", "/synthesis", "/workflow"],
+  manager: ["/", "/discover", "/screen", "/metrics", "/target", "/synthesis", "/workflow"],
 };
 
 // Short per-view hint text shown when the persona is relevant to the view.
@@ -20,6 +20,8 @@ export const PERSONA_HINTS: Record<Persona, Partial<Record<string, string>>> = {
   scientist: {
     "/discover":
       "Bench scientist view: insert a target, run the pipeline, and review the proposed hits. You are the human in the loop — accept the ones worth testing.",
+    "/screen":
+      "Screener view: plug the predicted molecules into your UHTS funnel — 1536-well primary % inhibition with Z′, then dose-response IC50/EC50 and SPR Kd/Ki on the hits. The confirmed Ki becomes ground truth that recalibrates the model.",
     "/submit":
       "Bench scientist view: log a measurement with its full semantics. The status you get back is the policy talking — fill the metadata and watch it go green, leave it out and see why it blocks.",
     "/records":
@@ -30,6 +32,8 @@ export const PERSONA_HINTS: Record<Persona, Partial<Record<string, string>>> = {
   ml: {
     "/discover":
       "ML engineer view: a custom target drives generation (POST /acquisition/run). Accepting hits returns ground truth and feeds the predicted-vs-measured delta back to the surrogate.",
+    "/screen":
+      "ML engineer view: primary % inhibition and functional EC50 are first-class model-ready readouts (their own comparability space); the confirmed Ki closes calibration. Boltz predictions are graded by the predicted-vs-measured Δ, never used as training labels.",
     "/acquisition":
       "ML engineer view: the ranked batch the loop wants made next. Watch the OOD flags and remember Boltz affinity is a ranking proxy, not ground truth.",
     "/records":
@@ -46,6 +50,8 @@ export const PERSONA_HINTS: Record<Persona, Partial<Record<string, string>>> = {
   manager: {
     "/discover":
       "Manager view: the end-to-end story in one screen — insert a target, watch it process step by step, approve at the human gate, and see results feed back to the model.",
+    "/screen":
+      "Manager view: the assay-side loop in four clicks — predicted molecules → 1536-well primary screen → confirm/characterize → measured affinity feeds back as ground truth. The clearest way to show how wet-lab results grade and retrain the model.",
     "/":
       "Manager view: where is the loop stuck? The blocked count is the communication gap, shown as a number — click it to drill in.",
     "/metrics":

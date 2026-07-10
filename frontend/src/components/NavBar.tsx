@@ -13,6 +13,7 @@ import { api } from "../api/client";
 const TOP_LINKS: { to: string; label: string }[] = [
   { to: "/", label: "Overview" },
   { to: "/discover", label: "Discover" },
+  { to: "/screen", label: "Screen" },
   { to: "/workflow", label: "Workflow" },
 ];
 

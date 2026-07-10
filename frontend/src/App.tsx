@@ -5,6 +5,7 @@ import Sidebar from "./components/Sidebar";
 import { PersonaProvider } from "./lib/persona";
 import LoopOverview from "./views/LoopOverview";
 import Discover from "./views/Discover";
+import Screen from "./views/Screen";
 import Workflow from "./views/Workflow";
 import TargetView from "./views/Target";
 import Records from "./views/Records";
@@ -45,6 +46,7 @@ export default function App() {
             <Routes location={location}>
               <Route path="/" element={<LoopOverview />} />
               <Route path="/discover" element={<Discover />} />
+              <Route path="/screen" element={<Screen />} />
               <Route path="/workflow" element={<Workflow />} />
               <Route path="/target" element={<TargetView />} />
               <Route path="/submit" element={<Intake />} />
